@@ -1,0 +1,14 @@
+{
+  "name": "bricabrac-single-file-modules",
+  "version": "0.0.0",
+  "description": "",
+  "main": "lib/main.js",
+  "repository": "github:loveencounterflow/bricabrac-single-file-modules",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.13.1"
+}
