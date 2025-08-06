@@ -197,16 +197,17 @@ ANSI_BRICS =
     VARIOUS_BRICS           = require './various-brics'
     { set_getter,
       hide,               } = VARIOUS_BRICS.require_managed_property_tools()
+    segmenter               = new Intl.Segmenter()
     #.........................................................................................................
-    get_string_width  = ( text ) ->
-      return ( Array.from text ).length
+    simple_get_width  = ( text ) -> ( Array.from text ).length
+    ansi_splitter     = /((?:\x1b\[[^m]+m)+)/g
+    js_segmentize     = ( text ) -> ( d.segment for d from segmenter.segment text )
+    cfg_template      = Object.freeze
+      splitter:           ansi_splitter
+      get_width:          simple_get_width
+      segmentize:         js_segmentize
     #.........................................................................................................
-    ansi_matcher      = /((?:\x1b\[[^m]+m)+)/g
-    segmenter         = new Intl.Segmenter()
-    split_glyphs      = ( text ) -> ( d.segment for d from segmenter.segment text )
-    cfg_template      = Object.freeze { get_string_width, }
-    #.........................................................................................................
-    internals         = Object.freeze { ansi_matcher, segmenter, split_glyphs, cfg_template, }
+    internals         = Object.freeze { simple_get_width, ansi_splitter, js_segmentize, cfg_template, }
 
     #=========================================================================================================
     class Chunk
@@ -262,10 +263,10 @@ ANSI_BRICS =
           return @
         #.....................................................................................................
         has_ansi = true
-        for text in source.split ansi_matcher
+        for text in source.split @cfg.splitter
           has_ansi  = not has_ansi
           continue if text is ''
-          width     = if has_ansi then 0 else @cfg.get_string_width text
+          width     = if has_ansi then 0 else @cfg.get_width text
           @chunks.push new Chunk { has_ansi, width, text, }
         #.....................................................................................................
         return @
