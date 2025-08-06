@@ -194,7 +194,6 @@ ANSI_BRICS =
   require_ansi_chunker: ->
 
     #=========================================================================================================
-    get_string_width  = ( text ) ->
     VARIOUS_BRICS           = require './various-brics'
     { set_getter,
       hide,               } = VARIOUS_BRICS.require_managed_property_tools()
