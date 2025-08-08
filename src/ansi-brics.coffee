@@ -302,6 +302,7 @@ ANSI_BRICS =
         break if count > length
       return R
 
+
     #=========================================================================================================
     return exports = { build_chr_gauge, }
 
