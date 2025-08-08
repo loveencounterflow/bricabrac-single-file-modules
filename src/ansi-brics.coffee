@@ -279,6 +279,32 @@ ANSI_BRICS =
     return exports = { Ansi_chunker, chunkify, internals, }
 
 
+  #===========================================================================================================
+  ### NOTE Future Single-File Module ###
+  require_chr_gauge: ->
+    { ansi_colors_and_effects: C, } = ANSI_BRICS.require_ansi_colors_and_effects()
+    build_chr_gauge = ({ length = 30, }) ->
+      even_color    = ( x ) -> C.bg_yellow  + C.black   + C.bold + "#{x}" + C.reset
+      odd_color     = ( x ) -> C.bg_black   + C.yellow  + C.bold + "#{x}" + C.reset
+      decade_color  = ( x ) -> C.bg_white   + C.red     + C.bold + "#{x}" + C.reset
+      decade        = 0
+      count         = 0
+      R             = ''
+      loop
+        for unit in [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, ]
+          count++
+          break if count > length
+          if unit is 0
+            decade++
+            R += decade_color decade
+          else
+            R += ( if unit %% 2 is 0 then even_color else odd_color ) unit
+        break if count > length
+      return R
+
+    #=========================================================================================================
+    return exports = { build_chr_gauge, }
+
 #===========================================================================================================
 Object.assign module.exports, ANSI_BRICS
 

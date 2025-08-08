@@ -70,6 +70,22 @@ UNSTABLE_BRICS =
     #.......................................................................................................
     return exports = { get_next_free_filename, get_next_filename, exists, cache_filename_re, errors, }
 
+  #===========================================================================================================
+  ### NOTE Future Single-File Module ###
+  require_command_line_tools: ->
+    CP = require 'node:child_process'
+    #-----------------------------------------------------------------------------------------------------------
+    get_command_line_result = ( command, input ) ->
+      return ( CP.execSync command, { encoding: 'utf-8', input, } ).replace /\n$/s, ''
+
+    #-----------------------------------------------------------------------------------------------------------
+    get_wc_max_line_length = ( text ) ->
+      ### thx to https://unix.stackexchange.com/a/258551/280204 ###
+      return parseInt ( get_command_line_result 'wc --max-line-length', text ), 10
+
+    #.......................................................................................................
+    return exports = { get_command_line_result, get_wc_max_line_length, }
+
 #===========================================================================================================
 Object.assign module.exports, UNSTABLE_BRICS
 
