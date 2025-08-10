@@ -41,8 +41,8 @@ UNSTABLE_BRICS =
     #.......................................................................................................
     get_next_filename = ( path ) ->
       ### TAINT use proper type checking ###
-      throw new errors.TMP_validation_error "Ω___9 expected a text, got #{rpr path}" unless ( typeof path ) is 'string'
-      throw new errors.TMP_validation_error "Ω__10 expected a nonempty text, got #{rpr path}" unless path.length > 0
+      throw new errors.TMP_validation_error "Ω___1 expected a text, got #{rpr path}" unless ( typeof path ) is 'string'
+      throw new errors.TMP_validation_error "Ω___2 expected a nonempty text, got #{rpr path}" unless path.length > 0
       dirname  = PATH.dirname path
       basename = PATH.basename path
       unless ( match = basename.match cache_filename_re )?
@@ -60,7 +60,7 @@ UNSTABLE_BRICS =
         #...................................................................................................
         failure_count++
         if failure_count > cfg.max_attempts
-          throw new errors.TMP_exhaustion_error "Ω__11 too many (#{failure_count}) attempts; path #{rpr R} exists"
+          throw new errors.TMP_exhaustion_error "Ω___3 too many (#{failure_count}) attempts; path #{rpr R} exists"
         #...................................................................................................
         R = get_next_filename R
         break unless exists R
@@ -98,13 +98,13 @@ UNSTABLE_BRICS =
     #---------------------------------------------------------------------------------------------------------
     internals = Object.freeze
       chr_re: ///^(?:\p{L}|\p{Zs}|\p{Z}|\p{M}|\p{N}|\p{P}|\p{S})$///v
-      templates:
-        random_tools_cfg:
-          seed:           null
-          size:           1_000
-          max_attempts:   1_000
+      templates: Object.freeze
+        random_tools_cfg: Object.freeze
+          seed:               null
+          size:               1_000
+          max_attempts:       1_000
           # unique_count:   1_000
-          unicode_ranges: [ 0x0000 .. 0x10ffff ]
+          unicode_cid_range:  Object.freeze [ 0x0000, 0x10ffff ]
 
     #---------------------------------------------------------------------------------------------------------
     ```
@@ -157,16 +157,25 @@ UNSTABLE_BRICS =
         return undefined
 
       #-------------------------------------------------------------------------------------------------------
-      float:    ( min = 0, max = 1 ) -> min + @_float() * ( max - min )
-      integer:  ( min = 0, max = 1 ) -> Math.round @float min, max
+      float:    ({ min = 0, max = 1, }={}) -> min + @_float() * ( max - min )
+      integer:  ({ min = 0, max = 1, }={}) -> Math.round @float { min, max, }
 
       #-------------------------------------------------------------------------------------------------------
-      chr: ->
+      text: ({ min = 0, max = 1, length = 1, }={}) ->
+        return ( @chr { min, max, } for _ in [ 1 .. length ] ).join ''
+
+      #-------------------------------------------------------------------------------------------------------
+      chr: ({ min = null, max = null, }={}) ->
+        min   = min.codePointAt 0 if ( typeof min ) is 'string'
+        max   = max.codePointAt 0 if ( typeof max ) is 'string'
+        min  ?= @cfg.unicode_cid_range[ 0 ]
+        max  ?= @cfg.unicode_cid_range[ 1 ]
         count = 0
         loop
           count++
-          throw new Error "Ω__10 exhausted" if count > @cfg.max_attempts
-          return R if internals.chr_re.test ( R = String.fromCodePoint @integer 0x0000, 0x10ffff )
+          throw new Error "Ω___5 exhausted" if count > @cfg.max_attempts
+          R = String.fromCodePoint @integer { min, max, }
+          return R if internals.chr_re.test ( R )
         return null
 
       # #-------------------------------------------------------------------------------------------------------
