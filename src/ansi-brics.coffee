@@ -191,6 +191,31 @@ ANSI_BRICS =
 
   #===========================================================================================================
   ### NOTE Future Single-File Module ###
+  require_strip_ansi: ->
+    ### from https://github.com/nodejs/node/blob/21eac793cd746eab0b36d75af5e16aed11f9aa4b/lib/internal/util/inspect.js#L2521 ###
+    ### augmented to also match colons as per https://en.wikipedia.org/wiki/ANSI_escape_code#24-bit ###
+    ```
+    // Regex used for ansi escape code splitting
+    // Ref: https://github.com/chalk/ansi-regex/blob/f338e1814144efb950276aac84135ff86b72dc8e/index.js
+    // License: MIT by Sindre Sorhus <sindresorhus@gmail.com>
+    // Matches all ansi escape code sequences in a string
+    const chalk_ansi_re = new RegExp(
+      '[\\u001B\\u009B][[\\]()#;:?]*' +
+      '(?:(?:(?:(?:[;:][-a-zA-Z\\d\\/\\#&.:=?%@~_]+)*' +
+      '|[a-zA-Z\\d]+(?:[;:][-a-zA-Z\\d\\/\\#&.:=?%@~_]*)*)?' +
+      '(?:\\u0007|\\u001B\\u005C|\\u009C))' +
+      '|(?:(?:\\d{1,4}(?:[;:]\\d{0,4})*)?' +
+      '[\\dA-PR-TZcf-nq-uy=><~]))', 'g',
+    );
+    ```
+    own_single_ansi_re  = ///   (   \x1b \[ [^ \x40 - \x7e ]* [ \x40 - \x7e ] )    ///g
+    own_ansi_re         = /// ( (?: \x1b \[ [^ \x40 - \x7e ]* [ \x40 - \x7e ] )+ ) ///g
+    strip_ansi          = ( text ) -> text.replace own_ansi_re, ''
+    #.........................................................................................................
+    return { strip_ansi, internals: { ansi_re: own_ansi_re, own_single_ansi_re, }, }
+
+  #===========================================================================================================
+  ### NOTE Future Single-File Module ###
   require_ansi_chunker: ->
 
     #=========================================================================================================

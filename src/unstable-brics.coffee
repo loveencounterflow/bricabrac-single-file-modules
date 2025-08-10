@@ -86,6 +86,136 @@ UNSTABLE_BRICS =
     #.......................................................................................................
     return exports = { get_command_line_result, get_wc_max_line_length, }
 
+
+  #===========================================================================================================
+  ### NOTE Future Single-File Module ###
+  require_random_tools: ->
+    { hide,
+      get_setter,                 } = ( require './various-brics' ).require_managed_property_tools()
+    ### TAINT replace ###
+    # { default: _get_unique_text,  } = require 'unique-string'
+
+    #---------------------------------------------------------------------------------------------------------
+    internals = Object.freeze
+      chr_re: ///^(?:\p{L}|\p{Zs}|\p{Z}|\p{M}|\p{N}|\p{P}|\p{S})$///v
+      templates:
+        random_tools_cfg:
+          seed:           null
+          size:           1_000
+          max_attempts:   1_000
+          # unique_count:   1_000
+          unicode_ranges: [ 0x0000 .. 0x10ffff ]
+
+    #---------------------------------------------------------------------------------------------------------
+    ```
+    // thx to https://stackoverflow.com/a/47593316/7568091
+    // https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript
+
+    // SplitMix32
+
+    // A 32-bit state PRNG that was made by taking MurmurHash3's mixing function, adding a incrementor and
+    // tweaking the constants. It's potentially one of the better 32-bit PRNGs so far; even the author of
+    // Mulberry32 considers it to be the better choice. It's also just as fast.
+
+    const splitmix32 = function ( a ) {
+     return function() {
+       a |= 0;
+       a = a + 0x9e3779b9 | 0;
+       let t = a ^ a >>> 16;
+       t = Math.imul(t, 0x21f0aaad);
+       t = t ^ t >>> 15;
+       t = Math.imul(t, 0x735a2d97);
+       return ((t = t ^ t >>> 15) >>> 0) / 4294967296;
+      }
+    }
+
+    // const prng = splitmix32((Math.random()*2**32)>>>0)
+    // for(let i=0; i<10; i++) console.log(prng());
+    //
+    // I would recommend this if you just need a simple but good PRNG and don't need billions of random
+    // numbers (see Birthday problem).
+    //
+    // Note: It does have one potential concern: it does not repeat previous numbers until you exhaust 4.3
+    // billion numbers and it repeats again. Which may or may not be a statistical concern for your use
+    // case. It's like a list of random numbers with the duplicates removed, but without any extra work
+    // involved to remove them. All other generators in this list do not exhibit this behavior.
+    ```
+
+    #=========================================================================================================
+    class Get_random
+
+      #-------------------------------------------------------------------------------------------------------
+      @get_random_seed: -> ( Math.random() * 2 ** 32 ) >>> 0
+
+      #-------------------------------------------------------------------------------------------------------
+      constructor: ( cfg ) ->
+        @cfg        = { internals.templates.random_tools_cfg..., cfg..., }
+        @cfg.seed  ?= @constructor.get_random_seed()
+        hide @, '_float', splitmix32 @cfg.seed
+        hide @, '_seen',
+          float: new Set()
+        return undefined
+
+      #-------------------------------------------------------------------------------------------------------
+      float:    ( min = 0, max = 1 ) -> min + @_float() * ( max - min )
+      integer:  ( min = 0, max = 1 ) -> Math.round @float min, max
+
+      #-------------------------------------------------------------------------------------------------------
+      chr: ->
+        count = 0
+        loop
+          count++
+          throw new Error "Ω__10 exhausted" if count > @cfg.max_attempts
+          return R if internals.chr_re.test ( R = String.fromCodePoint @integer 0x0000, 0x10ffff )
+        return null
+
+      # #-------------------------------------------------------------------------------------------------------
+      # unique_float: ({ min = 0, max = 1, }) ->
+      #   ### TAINT refactor ###
+      #   cache = @_seen.float
+      #   if cache.size >= @cfg.unique_count
+      #     for e from cache
+      #       cache.delete e
+      #       break
+      #   #.....................................................................................................
+      #   ### TAINT refactor ###
+      #   old_size = cache.size
+      #   while cache.size is old_size
+      #     R = @_float()
+      #     cache.add R
+      #   #.....................................................................................................
+      #   return R if min is 0 and max is 1
+      #   return min + R * ( max - min )
+
+      #-------------------------------------------------------------------------------------------------------
+      get_unique_random: ->
+
+      #-------------------------------------------------------------------------------------------------------
+      get_codepoi = ( cfg ) ->
+
+      #-------------------------------------------------------------------------------------------------------
+      get_unique_text = ( cfg ) ->
+        cfg = { internals.templates.get_texts_mapped_to_width_length_cfg..., cfg..., }
+
+      _get_unique_text = ( min_length ) -> _get_unique_text()[ .. ( GUY.rnd.random_integer 1, 15 ) ]
+
+      #-------------------------------------------------------------------------------------------------------
+      get_texts_mapped_to_width_length = ( cfg ) ->
+        cfg       = { internals.templates.get_texts_mapped_to_width_length_cfg..., cfg..., }
+        R         = new Map()
+        old_size  = 0
+        loop
+          while R.size is old_size
+            entry = [ get_unique_text(), ( GUY.rnd.random_integer 0, 10 ), ]
+            R.set entry...
+          old_size = R.size
+          break if old_size >= cfg.size
+        return R
+
+    #=========================================================================================================
+    return exports = { Get_random, internals, }
+
+
 #===========================================================================================================
 Object.assign module.exports, UNSTABLE_BRICS
 
