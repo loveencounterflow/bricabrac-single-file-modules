@@ -109,6 +109,8 @@ UNSTABLE_BRICS =
         stats:
           chr:
             attempts:         0
+          set_of_chrs:
+            attempts:         0
 
     #---------------------------------------------------------------------------------------------------------
     ```
@@ -156,24 +158,16 @@ UNSTABLE_BRICS =
         @cfg        = { internals.templates.random_tools_cfg..., cfg..., }
         @cfg.seed  ?= @constructor.get_random_seed()
         hide @, '_float', splitmix32 @cfg.seed
-        hide @, '_stats', new Map()
         return undefined
 
 
       #=======================================================================================================
       # STATS
       #-------------------------------------------------------------------------------------------------------
-      _reset_stats: ->
-        @_stats.clear()
-        return null
-
-      #-------------------------------------------------------------------------------------------------------
       _create_stats_for: ( name ) ->
-        @_reset_stats()
         unless ( template = internals.templates.stats[ name ] )?
-          ### TAINT use rpr() ###
-          throw new Error "Ω___5 unknown stats name #{name}"
-        @_stats.set name, ( stats = { template..., } )
+          throw new Error "Ω___4 unknown stats name #{name}" ### TAINT use rpr() ###
+        stats = { template..., }
         #.....................................................................................................
         if @cfg.on_stats? then  finish = ( R ) => @cfg.on_stats { name, stats, R, }; R
         else                    finish = ( R ) => R
@@ -191,14 +185,20 @@ UNSTABLE_BRICS =
         return ( @chr { min, max, } for _ in [ 1 .. length ] ).join ''
 
       #-------------------------------------------------------------------------------------------------------
+      _get_min_max: ({ min = null, max = null, }={}) ->
+        min  = min.codePointAt 0 if ( typeof min ) is 'string'
+        max  = max.codePointAt 0 if ( typeof max ) is 'string'
+        min ?= @cfg.unicode_cid_range[ 0 ]
+        max ?= @cfg.unicode_cid_range[ 1 ]
+        return { min, max, }
+
+      #-------------------------------------------------------------------------------------------------------
       chr: ({ min = null, max = null, }={}) ->
         { stats,
           finish,     } = @_create_stats_for 'chr'
         #.....................................................................................................
-        min             = min.codePointAt 0 if ( typeof min ) is 'string'
-        max             = max.codePointAt 0 if ( typeof max ) is 'string'
-        min            ?= @cfg.unicode_cid_range[ 0 ]
-        max            ?= @cfg.unicode_cid_range[ 1 ]
+        { min,
+          max,        } = @_get_min_max { min, max, }
         #.....................................................................................................
         loop
           stats.attempts++
@@ -208,35 +208,30 @@ UNSTABLE_BRICS =
         #.....................................................................................................
         return null
 
+      #-------------------------------------------------------------------------------------------------------
+      set_of_chrs: ({ min = null, max = null, size = 2 }={}) ->
+        { stats,
+          finish,     } = @_create_stats_for 'set_of_chrs'
+        R               = new Set()
+        #.....................................................................................................
+        ### TAINT refactor ###
+        loop
+          old_size = R.size
+          while ( R.size is old_size )
+            stats.attempts++
+            throw new Error "Ω___6 exhausted" if stats.attempts > @cfg.max_attempts
+            R.add @chr { min, max, }
+          break if R.size >= size
+        return ( finish R )
+
       # #-------------------------------------------------------------------------------------------------------
-      # unique_float: ({ min = 0, max = 1, }) ->
-      #   ### TAINT refactor ###
-      #   cache = @_seen.float
-      #   if cache.size >= @cfg.unique_count
-      #     for e from cache
-      #       cache.delete e
-      #       break
-      #   #.....................................................................................................
-      #   ### TAINT refactor ###
-      #   old_size = cache.size
-      #   while cache.size is old_size
-      #     R = @_float()
-      #     cache.add R
-      #   #.....................................................................................................
-      #   return R if min is 0 and max is 1
-      #   return min + R * ( max - min )
+      # get_codepoi = ( cfg ) ->
 
-      #-------------------------------------------------------------------------------------------------------
-      get_unique_random: ->
+      # #-------------------------------------------------------------------------------------------------------
+      # get_unique_text = ( cfg ) ->
+      #   cfg = { internals.templates.get_texts_mapped_to_width_length_cfg..., cfg..., }
 
-      #-------------------------------------------------------------------------------------------------------
-      get_codepoi = ( cfg ) ->
-
-      #-------------------------------------------------------------------------------------------------------
-      get_unique_text = ( cfg ) ->
-        cfg = { internals.templates.get_texts_mapped_to_width_length_cfg..., cfg..., }
-
-      _get_unique_text = ( min_length ) -> _get_unique_text()[ .. ( GUY.rnd.random_integer 1, 15 ) ]
+      # _get_unique_text = ( min_length ) -> _get_unique_text()[ .. ( GUY.rnd.random_integer 1, 15 ) ]
 
       #-------------------------------------------------------------------------------------------------------
       get_texts_mapped_to_width_length = ( cfg ) ->
