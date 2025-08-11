@@ -104,7 +104,11 @@ UNSTABLE_BRICS =
           size:               1_000
           max_attempts:       1_000
           # unique_count:   1_000
+          on_stats:           null
           unicode_cid_range:  Object.freeze [ 0x0000, 0x10ffff ]
+        stats:
+          chr:
+            attempts:         0
 
     #---------------------------------------------------------------------------------------------------------
     ```
@@ -152,10 +156,32 @@ UNSTABLE_BRICS =
         @cfg        = { internals.templates.random_tools_cfg..., cfg..., }
         @cfg.seed  ?= @constructor.get_random_seed()
         hide @, '_float', splitmix32 @cfg.seed
-        hide @, '_seen',
-          float: new Set()
+        hide @, '_stats', new Map()
         return undefined
 
+
+      #=======================================================================================================
+      # STATS
+      #-------------------------------------------------------------------------------------------------------
+      _reset_stats: ->
+        @_stats.clear()
+        return null
+
+      #-------------------------------------------------------------------------------------------------------
+      _create_stats_for: ( name ) ->
+        @_reset_stats()
+        unless ( template = internals.templates.stats[ name ] )?
+          ### TAINT use rpr() ###
+          throw new Error "Ω___5 unknown stats name #{name}"
+        @_stats.set name, ( stats = { template..., } )
+        #.....................................................................................................
+        if @cfg.on_stats? then  finish = ( R ) => @cfg.on_stats { name, stats, R, }; R
+        else                    finish = ( R ) => R
+        #.....................................................................................................
+        return { stats, finish, }
+
+      #=======================================================================================================
+      #
       #-------------------------------------------------------------------------------------------------------
       float:    ({ min = 0, max = 1, }={}) -> min + @_float() * ( max - min )
       integer:  ({ min = 0, max = 1, }={}) -> Math.round @float { min, max, }
@@ -166,16 +192,20 @@ UNSTABLE_BRICS =
 
       #-------------------------------------------------------------------------------------------------------
       chr: ({ min = null, max = null, }={}) ->
-        min   = min.codePointAt 0 if ( typeof min ) is 'string'
-        max   = max.codePointAt 0 if ( typeof max ) is 'string'
-        min  ?= @cfg.unicode_cid_range[ 0 ]
-        max  ?= @cfg.unicode_cid_range[ 1 ]
-        count = 0
+        { stats,
+          finish,     } = @_create_stats_for 'chr'
+        #.....................................................................................................
+        min             = min.codePointAt 0 if ( typeof min ) is 'string'
+        max             = max.codePointAt 0 if ( typeof max ) is 'string'
+        min            ?= @cfg.unicode_cid_range[ 0 ]
+        max            ?= @cfg.unicode_cid_range[ 1 ]
+        #.....................................................................................................
         loop
-          count++
-          throw new Error "Ω___5 exhausted" if count > @cfg.max_attempts
+          stats.attempts++
+          throw new Error "Ω___5 exhausted" if stats.attempts > @cfg.max_attempts
           R = String.fromCodePoint @integer { min, max, }
-          return R if internals.chr_re.test ( R )
+          return ( finish R ) if internals.chr_re.test ( R )
+        #.....................................................................................................
         return null
 
       # #-------------------------------------------------------------------------------------------------------
