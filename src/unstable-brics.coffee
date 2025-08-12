@@ -183,13 +183,20 @@ UNSTABLE_BRICS =
       integer:  ({ min = 0, max = 1, }={}) -> Math.round @float { min, max, }
 
       #-------------------------------------------------------------------------------------------------------
-      _get_random_length: ({ length = 1, min_length = null, max_length = null, }={}) ->
+      _get_min_max_length: ({ length = 1, min_length = null, max_length = null, }={}) ->
         if min_length?
-          return @integer { min: min_length, max: ( max_length ? min_length * 2 ), }
+          return { min_length, max_length: ( max_length ? min_length * 2 ), }
         else if max_length?
-          return @integer { min: ( min_length ? 1 ), max: max_length, }
-        return length if length?
+          return { min_length: ( min_length ? 1 ), max_length, }
+        return { min_length: length, max_length: length, } if length?
         throw new Error "Ω___6 must set at least one of `length`, `min_length`, `max_length`"
+
+      #-------------------------------------------------------------------------------------------------------
+      _get_random_length: ({ length = 1, min_length = null, max_length = null, }={}) ->
+        { min_length,
+          max_length, } = @_get_min_max_length { length, min_length, max_length, }
+        return min_length if min_length is max_length ### NOTE done to avoid changing PRNG state ###
+        return @integer { min: min_length, max: max_length, }
 
       #-------------------------------------------------------------------------------------------------------
       text: ({ min = 0, max = 1, length = 1, min_length = null, max_length = null, }={}) ->
@@ -237,14 +244,19 @@ UNSTABLE_BRICS =
         return ( finish R )
 
       #-------------------------------------------------------------------------------------------------------
-      set_of_texts: ({ min = null, max = null, length = 1, size = 2 }={}) ->
+      set_of_texts: ({ min = null, max = null, length = 1, min_length = null, max_length = null, size = 2 }={}) ->
         { stats,
           finish,     } = @_create_stats_for 'set_of_texts'
+        { min_length,
+          max_length, } = @_get_min_max_length { length, min_length, max_length, }
+        length_is_const = min_length is max_length
+        length          = min_length
         R               = new Set()
         #.....................................................................................................
         ### TAINT refactor ###
         loop
-          old_size = R.size
+          old_size  = R.size
+          length    = @integer { min: min_length, max: max_length, } unless length_is_const
           while ( R.size is old_size )
             stats.retries++
             throw new Error "Ω___6 exhausted" if stats.retries > @cfg.max_retries
