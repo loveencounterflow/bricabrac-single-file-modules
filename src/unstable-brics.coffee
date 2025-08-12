@@ -10,7 +10,7 @@ UNSTABLE_BRICS =
   ### NOTE Future Single-File Module ###
   require_next_free_filename: ->
     cfg =
-      max_attempts:   9999
+      max_retries:    9999
       prefix:         '~.'
       suffix:         '.bricabrac-cache'
     cache_filename_re = ///
@@ -59,8 +59,8 @@ UNSTABLE_BRICS =
       loop
         #...................................................................................................
         failure_count++
-        if failure_count > cfg.max_attempts
-          throw new errors.TMP_exhaustion_error "Ω___3 too many (#{failure_count}) attempts; path #{rpr R} exists"
+        if failure_count > cfg.max_retries
+           throw new errors.TMP_exhaustion_error "Ω___3 too many (#{failure_count}) retries;  path #{rpr R} exists"
         #...................................................................................................
         R = get_next_filename R
         break unless exists R
@@ -102,15 +102,17 @@ UNSTABLE_BRICS =
         random_tools_cfg: Object.freeze
           seed:               null
           size:               1_000
-          max_attempts:       1_000
+          max_retries:        1_000
           # unique_count:   1_000
           on_stats:           null
           unicode_cid_range:  Object.freeze [ 0x0000, 0x10ffff ]
         stats:
           chr:
-            attempts:         0
+            retries:          -1
           set_of_chrs:
-            attempts:         0
+            retries:          -1
+          set_of_texts:
+            retries:          -1
 
     #---------------------------------------------------------------------------------------------------------
     ```
@@ -181,7 +183,17 @@ UNSTABLE_BRICS =
       integer:  ({ min = 0, max = 1, }={}) -> Math.round @float { min, max, }
 
       #-------------------------------------------------------------------------------------------------------
-      text: ({ min = 0, max = 1, length = 1, }={}) ->
+      _get_random_length: ({ length = 1, min_length = null, max_length = null, }={}) ->
+        if min_length?
+          return @integer { min: min_length, max: ( max_length ? min_length * 2 ), }
+        else if max_length?
+          return @integer { min: ( min_length ? 1 ), max: max_length, }
+        return length if length?
+        throw new Error "Ω___6 must set at least one of `length`, `min_length`, `max_length`"
+
+      #-------------------------------------------------------------------------------------------------------
+      text: ({ min = 0, max = 1, length = 1, min_length = null, max_length = null, }={}) ->
+        length = @_get_random_length { length, min_length, max_length, }
         return ( @chr { min, max, } for _ in [ 1 .. length ] ).join ''
 
       #-------------------------------------------------------------------------------------------------------
@@ -201,8 +213,8 @@ UNSTABLE_BRICS =
           max,        } = @_get_min_max { min, max, }
         #.....................................................................................................
         loop
-          stats.attempts++
-          throw new Error "Ω___5 exhausted" if stats.attempts > @cfg.max_attempts
+          stats.retries++
+          throw new Error "Ω___5 exhausted" if stats.retries > @cfg.max_retries
           R = String.fromCodePoint @integer { min, max, }
           return ( finish R ) if internals.chr_re.test ( R )
         #.....................................................................................................
@@ -218,33 +230,40 @@ UNSTABLE_BRICS =
         loop
           old_size = R.size
           while ( R.size is old_size )
-            stats.attempts++
-            throw new Error "Ω___6 exhausted" if stats.attempts > @cfg.max_attempts
+            stats.retries++
+            throw new Error "Ω___6 exhausted" if stats.retries > @cfg.max_retries
             R.add @chr { min, max, }
           break if R.size >= size
         return ( finish R )
 
-      # #-------------------------------------------------------------------------------------------------------
-      # get_codepoi = ( cfg ) ->
-
-      # #-------------------------------------------------------------------------------------------------------
-      # get_unique_text = ( cfg ) ->
-      #   cfg = { internals.templates.get_texts_mapped_to_width_length_cfg..., cfg..., }
-
-      # _get_unique_text = ( min_length ) -> _get_unique_text()[ .. ( GUY.rnd.random_integer 1, 15 ) ]
-
       #-------------------------------------------------------------------------------------------------------
-      get_texts_mapped_to_width_length = ( cfg ) ->
-        cfg       = { internals.templates.get_texts_mapped_to_width_length_cfg..., cfg..., }
-        R         = new Map()
-        old_size  = 0
+      set_of_texts: ({ min = null, max = null, length = 1, size = 2 }={}) ->
+        { stats,
+          finish,     } = @_create_stats_for 'set_of_texts'
+        R               = new Set()
+        #.....................................................................................................
+        ### TAINT refactor ###
         loop
-          while R.size is old_size
-            entry = [ get_unique_text(), ( GUY.rnd.random_integer 0, 10 ), ]
-            R.set entry...
           old_size = R.size
-          break if old_size >= cfg.size
-        return R
+          while ( R.size is old_size )
+            stats.retries++
+            throw new Error "Ω___6 exhausted" if stats.retries > @cfg.max_retries
+            R.add @text { min, max, length, }
+          break if R.size >= size
+        return ( finish R )
+
+      # #-------------------------------------------------------------------------------------------------------
+      # get_texts_mapped_to_width_length = ( cfg ) ->
+      #   cfg       = { internals.templates.get_texts_mapped_to_width_length_cfg..., cfg..., }
+      #   R         = new Map()
+      #   old_size  = 0
+      #   loop
+      #     while R.size is old_size
+      #       entry = [ get_unique_text(), ( GUY.rnd.random_integer 0, 10 ), ]
+      #       R.set entry...
+      #     old_size = R.size
+      #     break if old_size >= cfg.size
+      #   return R
 
     #=========================================================================================================
     return exports = { Get_random, internals, }
