@@ -119,6 +119,18 @@ UNSTABLE_BRICS =
           min_length:         null
           max_length:         null
           filter:             null
+        set_of_chrs:
+          min:                0x000000
+          max:                0x10ffff
+          size:               2
+        text_producer:
+          min:                0x000000
+          max:                0x10ffff
+          length:             1
+          size:               2
+          min_length:         null
+          max_length:         null
+          filter:             null
         stats:
           chr:
             retries:          -1
@@ -293,30 +305,41 @@ UNSTABLE_BRICS =
       chr: ( P... ) -> ( @chr_producer P... )()
 
       #-------------------------------------------------------------------------------------------------------
-      set_of_chrs: ({ min = null, max = null, size = 2 }={}) ->
+      set_of_chrs: ( cfg ) ->
         { stats,
           finish,     } = @_create_stats_for 'set_of_chrs'
+        { min,
+          max,
+          size,       } = { internals.templates.set_of_chrs..., cfg..., }
         R               = new Set()
+        chr             = @chr_producer { min, max, }
         #.....................................................................................................
         while R.size < size
-          stats.retries++
-          R.add @chr { min, max, }
+          stats.retries++; throw new Error "Ω__12 exhausted" if stats.retries > @cfg.max_retries
+          R.add chr()
         return ( finish R )
 
       #-------------------------------------------------------------------------------------------------------
-      set_of_texts: ({ min = null, max = null, length = 1, min_length = null, max_length = null, size = 2 }={}) ->
+      set_of_texts: ( cfg ) ->
         { stats,
           finish,     } = @_create_stats_for 'set_of_texts'
+        { min,
+          max,
+          length,
+          size,
+          min_length,
+          max_length,
+          filter,     } = { internals.templates.set_of_texts..., cfg..., }
         { min_length,
           max_length, } = @_get_min_max_length { length, min_length, max_length, }
         length_is_const = min_length is max_length
         length          = min_length
         R               = new Set()
+        text            = @text_producer { min, max, length, min_length, max_length, filter, }
         #.....................................................................................................
         while R.size < size
-          stats.retries++
-          length = @integer { min: min_length, max: max_length, } unless length_is_const
-          R.add @text { min, max, length, }
+          stats.retries++; throw new Error "Ω__12 exhausted" if stats.retries > @cfg.max_retries
+          R.add text()
         return ( finish R )
 
       #-------------------------------------------------------------------------------------------------------
