@@ -199,6 +199,7 @@ UNSTABLE_BRICS =
         @name                   = name
         @max_retries            = max_retries ? internals.templates.random_tools_cfg.max_retries
         on_exhaustion          ?= 'error'
+        hide @, '_finished',      false
         hide @, '_retries',       0
         hide @, 'on_exhaustion',  switch true
           when on_exhaustion            is 'error'    then -> throw new Error "Ω___4 exhausted"
@@ -214,19 +215,22 @@ UNSTABLE_BRICS =
 
       #-------------------------------------------------------------------------------------------------------
       retry: ->
+        throw new Error "Ω___7 stats has already finished" if @_finished
         @_retries++
         return @on_exhaustion() if @exhausted
         return go_on
 
       #-------------------------------------------------------------------------------------------------------
-      finish: ( return_value ) ->
-        ### TAINT don't use `stats` prop, use `retries` ###
-        @on_stats { name, stats: @, R: return_value, } if @on_stats?
+      finish: ( R ) ->
+        throw new Error "Ω___8 stats has already finished" if @_finished
+        @_finished = true
+        @on_stats { name: @name, retries: @retries, R, } if @on_stats?
         return R
 
       #-------------------------------------------------------------------------------------------------------
+      set_getter @::, 'finished',   -> @_finished
       set_getter @::, 'retries',    -> @_retries
-      set_getter @::, 'exhausted',  -> @_retries >= @max_retries
+      set_getter @::, 'exhausted',  -> @_retries > @max_retries
 
     #=========================================================================================================
     class Get_random
@@ -242,25 +246,17 @@ UNSTABLE_BRICS =
         return undefined
 
 
-      # #=======================================================================================================
-      # # STATS
-      # #-------------------------------------------------------------------------------------------------------
-      # _create_stats_for: ( name, on_exhaustion = 'error' ) ->
-      #   stats = new Stats { name, on_exhaustion, }
-      #   unless ( template = internals.templates.stats[ name ] )?
-      #     throw new Error "Ω___7 unknown stats name #{name}" ### TAINT use rpr() ###
-      #   stats = { template..., }
-      #   #.....................................................................................................
-      #   if @cfg.on_stats? then  finish = ( R ) => @cfg.on_stats { name, stats, R, }; R
-      #   else                    finish = ( R ) => R
-      #   #.....................................................................................................
-      #   return { stats, finish, }
-
-
       #=======================================================================================================
       # INTERNALS
       #-------------------------------------------------------------------------------------------------------
-      _new_stats: -> new Stats()
+      _new_stats: ( cfg ) ->
+        cfg = {
+          internals.templates._new_stats...,
+          on_exhaustion:  @cfg.on_exhaustion,
+          on_stats:       @cfg.on_stats,
+          max_retries:    @cfg.max_retries,
+          cfg..., }
+        return new internals.Stats cfg
 
       #-------------------------------------------------------------------------------------------------------
       _get_min_max_length: ({ length = 1, min_length = null, max_length = null, }={}) ->
@@ -269,7 +265,7 @@ UNSTABLE_BRICS =
         else if max_length?
           return { min_length: ( min_length ? 1 ), max_length, }
         return { min_length: length, max_length: length, } if length?
-        throw new Error "Ω___8 must set at least one of `length`, `min_length`, `max_length`"
+        throw new Error "Ω__10 must set at least one of `length`, `min_length`, `max_length`"
 
       #-------------------------------------------------------------------------------------------------------
       _get_random_length: ({ length = 1, min_length = null, max_length = null, }={}) ->
@@ -292,7 +288,7 @@ UNSTABLE_BRICS =
         return ( filter                   ) if ( typeof filter ) is 'function'
         return ( ( x ) -> filter.test x   ) if filter instanceof RegExp
         ### TAINT use `rpr`, typing ###
-        throw new Error "Ω___9 unable to turn argument into a filter: #{argument}"
+        throw new Error "Ω__11 unable to turn argument into a filter: #{argument}"
 
 
       #=======================================================================================================
@@ -317,13 +313,12 @@ UNSTABLE_BRICS =
         filter          = @_get_filter filter
         #.....................................................................................................
         return float = =>
-          { stats,
-            finish,     } = @_create_stats_for 'float'
+          stats         = @_new_stats { name: 'float', }
           #.....................................................................................................
           loop
-            stats.retries++; throw new Error "Ω__10 exhausted" if stats.retries > @cfg.max_retries
             R = min + @_float() * ( max - min )
-            return ( finish R ) if ( filter R )
+            return ( stats.finish R ) if ( filter R )
+            return sentinel unless ( sentinel = stats.retry() ) is go_on
           #.....................................................................................................
           return null
 
@@ -338,13 +333,12 @@ UNSTABLE_BRICS =
         filter          = @_get_filter filter
         #.....................................................................................................
         return integer = =>
-          { stats,
-            finish,     } = @_create_stats_for 'integer'
+          stats = @_new_stats { name: 'integer', }
           #.....................................................................................................
           loop
-            stats.retries++; throw new Error "Ω__11 exhausted" if stats.retries > @cfg.max_retries
             R = Math.round min + @_float() * ( max - min )
-            return ( finish R ) if ( filter R )
+            return ( stats.finish R ) if ( filter R )
+            return sentinel unless ( sentinel = stats.retry() ) is go_on
           #.....................................................................................................
           return null
 
@@ -363,13 +357,12 @@ UNSTABLE_BRICS =
         filter          = @_get_filter filter
         #.....................................................................................................
         return chr = =>
-          { stats,
-            finish,     } = @_create_stats_for 'chr'
+          stats = @_new_stats { name: 'chr', }
           #.....................................................................................................
           loop
-            stats.retries++; throw new Error "Ω__12 exhausted" if stats.retries > @cfg.max_retries
             R = String.fromCodePoint @integer { min, max, }
-            return ( finish R ) if ( prefilter R ) and ( filter R )
+            return ( stats.finish R ) if ( prefilter R ) and ( filter R )
+            return sentinel unless ( sentinel = stats.retry() ) is go_on
           #.....................................................................................................
           return null
 
@@ -394,14 +387,13 @@ UNSTABLE_BRICS =
         filter            = @_get_filter filter
         #.....................................................................................................
         return text = =>
-          { stats,
-            finish,     } = @_create_stats_for 'text'
+          stats = @_new_stats { name: 'text', on_exhaustion, }
           #.....................................................................................................
           length = @integer { min: min_length, max: max_length, } unless length_is_const
           loop
-            stats.retries++; throw new Error "Ω__13 exhausted" if stats.retries > @cfg.max_retries
             R = ( @chr { min, max, } for _ in [ 1 .. length ] ).join ''
-            return ( finish R ) if ( filter R )
+            return ( stats.finish R ) if ( filter R )
+            return sentinel unless ( sentinel = stats.retry() ) is go_on
           #.....................................................................................................
           return null
 
@@ -410,13 +402,12 @@ UNSTABLE_BRICS =
       # SETS
       #-------------------------------------------------------------------------------------------------------
       set_of_chrs: ( cfg ) ->
-        { stats,
-          finish,     } = @_create_stats_for 'set_of_chrs'
         { min,
           max,
-          size,       } = { internals.templates.set_of_chrs..., cfg..., }
-        R               = new Set()
-        chr             = @chr_producer { min, max, }
+          size,         } = { internals.templates.set_of_chrs..., cfg..., }
+        stats             = @_new_stats { name: 'set_of_chrs', }
+        R                 = new Set()
+        chr               = @chr_producer { min, max, }
         #.....................................................................................................
         loop
           R.add chr()
@@ -426,8 +417,6 @@ UNSTABLE_BRICS =
 
       #-------------------------------------------------------------------------------------------------------
       set_of_texts: ( cfg ) ->
-        { stats,
-          finish,     } = @_create_stats_for 'set_of_texts'
         { min,
           max,
           length,
@@ -441,11 +430,13 @@ UNSTABLE_BRICS =
         length          = min_length
         R               = new Set()
         text            = @text_producer { min, max, length, min_length, max_length, filter, }
+        stats           = @_new_stats { name: 'set_of_texts', }
         #.....................................................................................................
-        while R.size < size
-          stats.retries++; throw new Error "Ω__14 exhausted" if stats.retries > @cfg.max_retries
+        loop
           R.add text()
-        return ( finish R )
+          break if R.size >= size
+          return sentinel unless ( sentinel = stats.retry() ) is go_on
+        return ( stats.finish R )
 
 
       #=======================================================================================================

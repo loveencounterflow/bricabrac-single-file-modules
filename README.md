@@ -22,6 +22,7 @@
 * **`[—]`** Provide internal implementations that capture attempt counts for testing, better insights
 * **`[—]`** use custom class for `stats` that handles excessive retry counts
 * **`[—]`** implement iterators
+* **`[—]`** should `on_exhaustion`, `on_stats`, `max_retries` be implemented for each method?
 
 ### Errors
 
