@@ -112,8 +112,17 @@ UNSTABLE_BRICS =
           max:                0x10ffff
           prefilter:          chr_re
           filter:             null
+        text_producer:
+          min:                0x000000
+          max:                0x10ffff
+          length:             1
+          min_length:         null
+          max_length:         null
+          filter:             null
         stats:
           chr:
+            retries:          -1
+          text:
             retries:          -1
           set_of_chrs:
             retries:          -1
@@ -195,7 +204,7 @@ UNSTABLE_BRICS =
         else if max_length?
           return { min_length: ( min_length ? 1 ), max_length, }
         return { min_length: length, max_length: length, } if length?
-        throw new Error "Ω___6 must set at least one of `length`, `min_length`, `max_length`"
+        throw new Error "Ω___5 must set at least one of `length`, `min_length`, `max_length`"
 
       #-------------------------------------------------------------------------------------------------------
       _get_random_length: ({ length = 1, min_length = null, max_length = null, }={}) ->
@@ -205,9 +214,39 @@ UNSTABLE_BRICS =
         return @integer { min: min_length, max: max_length, }
 
       #-------------------------------------------------------------------------------------------------------
-      text: ({ min = 0, max = 1, length = 1, min_length = null, max_length = null, }={}) ->
-        length = @_get_random_length { length, min_length, max_length, }
-        return ( @chr { min, max, } for _ in [ 1 .. length ] ).join ''
+      text_producer: ( cfg ) ->
+        ### TAINT consider to cache result ###
+        { min,
+          max,
+          length,
+          min_length,
+          max_length,
+          filter,     } = { internals.templates.text_producer..., cfg..., }
+        #.....................................................................................................
+        { min,
+          max,        } = @_get_min_max { min, max, }
+        #.....................................................................................................
+        { min_length,
+          max_length, } = @_get_min_max_length { length, min_length, max_length, }
+        length_is_const = min_length is max_length
+        length          = min_length
+        #.....................................................................................................
+        filter          = @_get_filter filter
+        #.....................................................................................................
+        return text = =>
+          { stats,
+            finish,     } = @_create_stats_for 'text'
+          #.....................................................................................................
+          length = @integer { min: min_length, max: max_length, } unless length_is_const
+          loop
+            stats.retries++; throw new Error "Ω__10 exhausted" if stats.retries > @cfg.max_retries
+            R = ( @chr { min, max, } for _ in [ 1 .. length ] ).join ''
+            return ( finish R ) if ( filter R )
+          #.....................................................................................................
+          return null
+
+      #-------------------------------------------------------------------------------------------------------
+      text: ( P... ) -> ( @text_producer P... )()
 
       #-------------------------------------------------------------------------------------------------------
       _get_min_max: ({ min = null, max = null, }={}) ->
@@ -223,7 +262,7 @@ UNSTABLE_BRICS =
         return ( filter                   ) if ( typeof filter ) is 'function'
         return ( ( x ) -> filter.test x   ) if filter instanceof RegExp
         ### TAINT use `rpr`, typing ###
-        throw new Error "Ω___4 unable to turn argument into a filter: #{argument}"
+        throw new Error "Ω__11 unable to turn argument into a filter: #{argument}"
 
       #-------------------------------------------------------------------------------------------------------
       chr_producer: ( cfg ) ->
@@ -244,7 +283,7 @@ UNSTABLE_BRICS =
             finish,     } = @_create_stats_for 'chr'
           #.....................................................................................................
           loop
-            stats.retries++; throw new Error "Ω___5 exhausted" if stats.retries > @cfg.max_retries
+            stats.retries++; throw new Error "Ω__12 exhausted" if stats.retries > @cfg.max_retries
             R = String.fromCodePoint @integer { min, max, }
             return ( finish R ) if ( prefilter R ) and ( filter R )
           #.....................................................................................................
