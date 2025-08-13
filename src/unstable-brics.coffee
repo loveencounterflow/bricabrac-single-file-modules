@@ -98,12 +98,14 @@ UNSTABLE_BRICS =
     # max_retries = 9_999
     max_retries = 1_000
     go_on       = Symbol 'go_on'
+    clean       = ( x ) -> Object.fromEntries ( [ k, v, ] for k, v of x when v? )
 
     #---------------------------------------------------------------------------------------------------------
     internals = # Object.freeze
       chr_re:             chr_re
       max_retries:        max_retries
       go_on:              go_on
+      clean:              clean
       #.......................................................................................................
       templates: Object.freeze
         random_tools_cfg: Object.freeze
@@ -250,16 +252,7 @@ UNSTABLE_BRICS =
       # INTERNALS
       #-------------------------------------------------------------------------------------------------------
       _new_stats: ( cfg ) ->
-        console.debug 'Ω___9', cfg.on_stats
-        console.debug 'Ω__10', @cfg.on_stats
-        console.debug 'Ω__10', { { on_stats: @cfg.on_stats }..., { on_stats: cfg.on_stats }..., }
-        _cfg                = { internals.templates._new_stats..., }
-        _cfg.on_stats       = @cfg.on_stats       if @cfg.on_stats?
-        _cfg.on_exhaustion  = @cfg.on_exhaustion  if @cfg.on_exhaustion?
-        _cfg.max_retries    = @cfg.max_retries    if @cfg.max_retries?
-        cfg                 = { _cfg..., cfg..., }
-        console.debug 'Ω__11', cfg.on_stats
-        return new internals.Stats cfg
+        return new internals.Stats { internals.templates._new_stats..., ( clean @cfg )..., cfg..., }
 
       #-------------------------------------------------------------------------------------------------------
       _get_min_max_length: ({ length = 1, min_length = null, max_length = null, }={}) ->
@@ -319,7 +312,7 @@ UNSTABLE_BRICS =
         filter            = @_get_filter filter
         #.....................................................................................................
         return float = =>
-          stats = @_new_stats { name: 'float', on_stats, on_exhaustion, max_retries, }
+          stats = @_new_stats { name: 'float', ( clean { on_stats, on_exhaustion, max_retries, } )..., }
           #...................................................................................................
           loop
             R = min + @_float() * ( max - min )
@@ -342,8 +335,7 @@ UNSTABLE_BRICS =
         filter            = @_get_filter filter
         #.....................................................................................................
         return integer = =>
-          stats = @_new_stats { name: 'integer', on_stats, on_exhaustion, max_retries, }
-          console.debug 'Ω__14', stats.on_stats
+          stats = @_new_stats { name: 'integer', ( clean { on_stats, on_exhaustion, max_retries, } )..., }
           #...................................................................................................
           loop
             R = Math.round min + @_float() * ( max - min )
@@ -370,7 +362,7 @@ UNSTABLE_BRICS =
         filter            = @_get_filter filter
         #.....................................................................................................
         return chr = =>
-          stats = @_new_stats { name: 'chr', on_stats, on_exhaustion, max_retries, }
+          stats = @_new_stats { name: 'chr', ( clean { on_stats, on_exhaustion, max_retries, } )..., }
           #...................................................................................................
           loop
             R = String.fromCodePoint @integer { min, max, }
@@ -402,7 +394,7 @@ UNSTABLE_BRICS =
         filter            = @_get_filter filter
         #.....................................................................................................
         return text = =>
-          stats = @_new_stats { name: 'text', on_stats, on_exhaustion, max_retries, }
+          stats = @_new_stats { name: 'text', ( clean { on_stats, on_exhaustion, max_retries, } )..., }
           #...................................................................................................
           length = @integer { min: min_length, max: max_length, } unless length_is_const
           loop
