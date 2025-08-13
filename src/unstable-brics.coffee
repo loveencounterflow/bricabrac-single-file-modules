@@ -107,11 +107,13 @@ UNSTABLE_BRICS =
           # unique_count:   1_000
           on_stats:           null
           unicode_cid_range:  Object.freeze [ 0x0000, 0x10ffff ]
+          on_exhaustion:      'error'
         chr_producer:
           min:                0x000000
           max:                0x10ffff
           prefilter:          chr_re
           filter:             null
+          on_exhaustion:      'error'
         text_producer:
           min:                0x000000
           max:                0x10ffff
@@ -119,10 +121,12 @@ UNSTABLE_BRICS =
           min_length:         null
           max_length:         null
           filter:             null
+          on_exhaustion:      'error'
         set_of_chrs:
           min:                0x000000
           max:                0x10ffff
           size:               2
+          on_exhaustion:      'error'
         text_producer:
           min:                0x000000
           max:                0x10ffff
@@ -131,6 +135,7 @@ UNSTABLE_BRICS =
           min_length:         null
           max_length:         null
           filter:             null
+          on_exhaustion:      'error'
         stats:
           float:
             retries:          -1
@@ -181,6 +186,30 @@ UNSTABLE_BRICS =
     ```
 
     #=========================================================================================================
+    class Stats
+
+      #-------------------------------------------------------------------------------------------------------
+      constructor: ({ name, on_exhaustion = 'error', max_retries = null }) ->
+        @name                   = name
+        @max_retries            = max_retries ? internals.templates.random_tools_cfg.max_retries
+        on_exhaustion          ?= 'error'
+        hide @, '_retries',       0
+        hide @, 'on_exhaustion',  switch true
+          when on_exhaustion            is 'error'    then -> throw new Error "Ω__10 exhausted"
+          when ( typeof on_exhaustion ) is 'function' then on_exhaustion
+          ### TAINT use rpr, typing ###
+          else throw new Error "Ω__10 illegal value for on_exhaustion: #{on_exhaustion}"
+        return undefined
+
+      #-------------------------------------------------------------------------------------------------------
+      Object.defineProperty @::, 'retries',
+        get: -> @_retries
+        set: ( value ) ->
+          return @on_exhaustion() if value > @max_retries
+          @_retries = value
+          return value
+
+    #=========================================================================================================
     class Get_random
 
       #-------------------------------------------------------------------------------------------------------
@@ -197,7 +226,8 @@ UNSTABLE_BRICS =
       #=======================================================================================================
       # STATS
       #-------------------------------------------------------------------------------------------------------
-      _create_stats_for: ( name ) ->
+      _create_stats_for: ( name, on_exhaustion = 'error' ) ->
+        stats = new Stats { name, on_exhaustion, }
         unless ( template = internals.templates.stats[ name ] )?
           throw new Error "Ω___4 unknown stats name #{name}" ### TAINT use rpr() ###
         stats = { template..., }
@@ -329,17 +359,17 @@ UNSTABLE_BRICS =
           length,
           min_length,
           max_length,
-          filter,     } = { internals.templates.text_producer..., cfg..., }
+          filter,
+          on_exhaustion } = { internals.templates.text_producer..., cfg..., }
         #.....................................................................................................
         { min,
-          max,        } = @_get_min_max { min, max, }
+          max,          } = @_get_min_max { min, max, }
         #.....................................................................................................
         { min_length,
-          max_length, } = @_get_min_max_length { length, min_length, max_length, }
-        length_is_const = min_length is max_length
-        length          = min_length
-        #.....................................................................................................
-        filter          = @_get_filter filter
+          max_length,   } = @_get_min_max_length { length, min_length, max_length, }
+        length_is_const   = min_length is max_length
+        length            = min_length
+        filter            = @_get_filter filter
         #.....................................................................................................
         return text = =>
           { stats,
