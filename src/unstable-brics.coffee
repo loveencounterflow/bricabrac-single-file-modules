@@ -203,12 +203,9 @@ UNSTABLE_BRICS =
         #.....................................................................................................
         return { stats, finish, }
 
-      #=======================================================================================================
-      #
-      #-------------------------------------------------------------------------------------------------------
-      float:    ({ min = 0, max = 1, }={}) -> min + @_float() * ( max - min )
-      integer:  ({ min = 0, max = 1, }={}) -> Math.round @float { min, max, }
 
+      #=======================================================================================================
+      # INTERNALS
       #-------------------------------------------------------------------------------------------------------
       _get_min_max_length: ({ length = 1, min_length = null, max_length = null, }={}) ->
         if min_length?
@@ -224,6 +221,59 @@ UNSTABLE_BRICS =
           max_length, } = @_get_min_max_length { length, min_length, max_length, }
         return min_length if min_length is max_length ### NOTE done to avoid changing PRNG state ###
         return @integer { min: min_length, max: max_length, }
+
+      #-------------------------------------------------------------------------------------------------------
+      _get_min_max: ({ min = null, max = null, }={}) ->
+        min  = min.codePointAt 0 if ( typeof min ) is 'string'
+        max  = max.codePointAt 0 if ( typeof max ) is 'string'
+        min ?= @cfg.unicode_cid_range[ 0 ]
+        max ?= @cfg.unicode_cid_range[ 1 ]
+        return { min, max, }
+
+      #-------------------------------------------------------------------------------------------------------
+      _get_filter: ( filter ) ->
+        return ( ( x ) -> true            ) unless filter?
+        return ( filter                   ) if ( typeof filter ) is 'function'
+        return ( ( x ) -> filter.test x   ) if filter instanceof RegExp
+        ### TAINT use `rpr`, typing ###
+        throw new Error "Ω__11 unable to turn argument into a filter: #{argument}"
+
+
+      #=======================================================================================================
+      # CONVENIENCE
+      #-------------------------------------------------------------------------------------------------------
+      chr:      ( P... ) -> ( @chr_producer P... )()
+      text:     ( P... ) -> ( @text_producer P... )()
+      float:    ({ min = 0, max = 1, }={}) -> min + @_float() * ( max - min )
+      integer:  ({ min = 0, max = 1, }={}) -> Math.round @float { min, max, }
+
+
+      #=======================================================================================================
+      # PRODUCERS
+      #-------------------------------------------------------------------------------------------------------
+      chr_producer: ( cfg ) ->
+        ### TAINT consider to cache result ###
+        { min,
+          max,
+          prefilter,
+          filter,     } = { internals.templates.chr_producer..., cfg..., }
+        #.....................................................................................................
+        { min,
+          max,        } = @_get_min_max { min, max, }
+        #.....................................................................................................
+        prefilter       = @_get_filter prefilter
+        filter          = @_get_filter filter
+        #.....................................................................................................
+        return chr = =>
+          { stats,
+            finish,     } = @_create_stats_for 'chr'
+          #.....................................................................................................
+          loop
+            stats.retries++; throw new Error "Ω__12 exhausted" if stats.retries > @cfg.max_retries
+            R = String.fromCodePoint @integer { min, max, }
+            return ( finish R ) if ( prefilter R ) and ( filter R )
+          #.....................................................................................................
+          return null
 
       #-------------------------------------------------------------------------------------------------------
       text_producer: ( cfg ) ->
@@ -257,53 +307,9 @@ UNSTABLE_BRICS =
           #.....................................................................................................
           return null
 
-      #-------------------------------------------------------------------------------------------------------
-      text: ( P... ) -> ( @text_producer P... )()
 
-      #-------------------------------------------------------------------------------------------------------
-      _get_min_max: ({ min = null, max = null, }={}) ->
-        min  = min.codePointAt 0 if ( typeof min ) is 'string'
-        max  = max.codePointAt 0 if ( typeof max ) is 'string'
-        min ?= @cfg.unicode_cid_range[ 0 ]
-        max ?= @cfg.unicode_cid_range[ 1 ]
-        return { min, max, }
-
-      #-------------------------------------------------------------------------------------------------------
-      _get_filter: ( filter ) ->
-        return ( ( x ) -> true            ) unless filter?
-        return ( filter                   ) if ( typeof filter ) is 'function'
-        return ( ( x ) -> filter.test x   ) if filter instanceof RegExp
-        ### TAINT use `rpr`, typing ###
-        throw new Error "Ω__11 unable to turn argument into a filter: #{argument}"
-
-      #-------------------------------------------------------------------------------------------------------
-      chr_producer: ( cfg ) ->
-        ### TAINT consider to cache result ###
-        { min,
-          max,
-          prefilter,
-          filter,     } = { internals.templates.chr_producer..., cfg..., }
-        #.....................................................................................................
-        { min,
-          max,        } = @_get_min_max { min, max, }
-        #.....................................................................................................
-        prefilter       = @_get_filter prefilter
-        filter          = @_get_filter filter
-        #.....................................................................................................
-        return chr = =>
-          { stats,
-            finish,     } = @_create_stats_for 'chr'
-          #.....................................................................................................
-          loop
-            stats.retries++; throw new Error "Ω__12 exhausted" if stats.retries > @cfg.max_retries
-            R = String.fromCodePoint @integer { min, max, }
-            return ( finish R ) if ( prefilter R ) and ( filter R )
-          #.....................................................................................................
-          return null
-
-      #-------------------------------------------------------------------------------------------------------
-      chr: ( P... ) -> ( @chr_producer P... )()
-
+      #=======================================================================================================
+      # SETS
       #-------------------------------------------------------------------------------------------------------
       set_of_chrs: ( cfg ) ->
         { stats,
@@ -342,6 +348,9 @@ UNSTABLE_BRICS =
           R.add text()
         return ( finish R )
 
+
+      #=======================================================================================================
+      # WALKERS
       #-------------------------------------------------------------------------------------------------------
       walk: ({ producer, n = 1, }={}) ->
         count = 0
