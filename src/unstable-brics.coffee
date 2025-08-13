@@ -233,14 +233,9 @@ UNSTABLE_BRICS =
           finish,     } = @_create_stats_for 'set_of_chrs'
         R               = new Set()
         #.....................................................................................................
-        ### TAINT refactor ###
-        loop
-          old_size = R.size
-          while ( R.size is old_size )
-            stats.retries++
-            throw new Error "Ω___6 exhausted" if stats.retries > @cfg.max_retries
-            R.add @chr { min, max, }
-          break if R.size >= size
+        while R.size < size
+          stats.retries++
+          R.add @chr { min, max, }
         return ( finish R )
 
       #-------------------------------------------------------------------------------------------------------
@@ -253,29 +248,11 @@ UNSTABLE_BRICS =
         length          = min_length
         R               = new Set()
         #.....................................................................................................
-        ### TAINT refactor ###
-        loop
-          old_size  = R.size
-          length    = @integer { min: min_length, max: max_length, } unless length_is_const
-          while ( R.size is old_size )
-            stats.retries++
-            throw new Error "Ω___6 exhausted" if stats.retries > @cfg.max_retries
-            R.add @text { min, max, length, }
-          break if R.size >= size
+        while R.size < size
+          stats.retries++
+          length = @integer { min: min_length, max: max_length, } unless length_is_const
+          R.add @text { min, max, length, }
         return ( finish R )
-
-      # #-------------------------------------------------------------------------------------------------------
-      # get_texts_mapped_to_width_length = ( cfg ) ->
-      #   cfg       = { internals.templates.get_texts_mapped_to_width_length_cfg..., cfg..., }
-      #   R         = new Map()
-      #   old_size  = 0
-      #   loop
-      #     while R.size is old_size
-      #       entry = [ get_unique_text(), ( GUY.rnd.random_integer 0, 10 ), ]
-      #       R.set entry...
-      #     old_size = R.size
-      #     break if old_size >= cfg.size
-      #   return R
 
     #=========================================================================================================
     return exports = { Get_random, internals, }
