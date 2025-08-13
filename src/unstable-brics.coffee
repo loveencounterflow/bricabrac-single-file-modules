@@ -94,10 +94,11 @@ UNSTABLE_BRICS =
       get_setter,                 } = ( require './various-brics' ).require_managed_property_tools()
     ### TAINT replace ###
     # { default: _get_unique_text,  } = require 'unique-string'
+    chr_re = ///^(?:\p{L}|\p{Zs}|\p{Z}|\p{M}|\p{N}|\p{P}|\p{S})$///v
 
     #---------------------------------------------------------------------------------------------------------
     internals = Object.freeze
-      chr_re: ///^(?:\p{L}|\p{Zs}|\p{Z}|\p{M}|\p{N}|\p{P}|\p{S})$///v
+      chr_re: chr_re
       templates: Object.freeze
         random_tools_cfg: Object.freeze
           seed:               null
@@ -106,6 +107,11 @@ UNSTABLE_BRICS =
           # unique_count:   1_000
           on_stats:           null
           unicode_cid_range:  Object.freeze [ 0x0000, 0x10ffff ]
+        chr_producer:
+          min:                0x000000
+          max:                0x10ffff
+          prefilter:          chr_re
+          filter:             null
         stats:
           chr:
             retries:          -1
@@ -212,20 +218,40 @@ UNSTABLE_BRICS =
         return { min, max, }
 
       #-------------------------------------------------------------------------------------------------------
-      chr: ({ min = null, max = null, }={}) ->
-        { stats,
-          finish,     } = @_create_stats_for 'chr'
+      _get_filter: ( filter ) ->
+        return ( ( x ) -> true            ) unless filter?
+        return ( filter                   ) if ( typeof filter ) is 'function'
+        return ( ( x ) -> filter.test x   ) if filter instanceof RegExp
+        ### TAINT use `rpr`, typing ###
+        throw new Error "Ω___4 unable to turn argument into a filter: #{argument}"
+
+      #-------------------------------------------------------------------------------------------------------
+      chr_producer: ( cfg ) ->
+        ### TAINT consider to cache result ###
+        { min,
+          max,
+          prefilter,
+          filter,     } = { internals.templates.chr_producer..., cfg..., }
         #.....................................................................................................
         { min,
           max,        } = @_get_min_max { min, max, }
         #.....................................................................................................
-        loop
-          stats.retries++
-          throw new Error "Ω___5 exhausted" if stats.retries > @cfg.max_retries
-          R = String.fromCodePoint @integer { min, max, }
-          return ( finish R ) if internals.chr_re.test ( R )
+        prefilter       = @_get_filter prefilter
+        filter          = @_get_filter filter
         #.....................................................................................................
-        return null
+        return chr = =>
+          { stats,
+            finish,     } = @_create_stats_for 'chr'
+          #.....................................................................................................
+          loop
+            stats.retries++; throw new Error "Ω___5 exhausted" if stats.retries > @cfg.max_retries
+            R = String.fromCodePoint @integer { min, max, }
+            return ( finish R ) if ( prefilter R ) and ( filter R )
+          #.....................................................................................................
+          return null
+
+      #-------------------------------------------------------------------------------------------------------
+      chr: ( P... ) -> ( @chr_producer P... )()
 
       #-------------------------------------------------------------------------------------------------------
       set_of_chrs: ({ min = null, max = null, size = 2 }={}) ->
