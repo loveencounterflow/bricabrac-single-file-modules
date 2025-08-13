@@ -250,12 +250,15 @@ UNSTABLE_BRICS =
       # INTERNALS
       #-------------------------------------------------------------------------------------------------------
       _new_stats: ( cfg ) ->
-        cfg = {
-          internals.templates._new_stats...,
-          on_exhaustion:  @cfg.on_exhaustion,
-          on_stats:       @cfg.on_stats,
-          max_retries:    @cfg.max_retries,
-          cfg..., }
+        console.debug 'Ω___9', cfg.on_stats
+        console.debug 'Ω__10', @cfg.on_stats
+        console.debug 'Ω__10', { { on_stats: @cfg.on_stats }..., { on_stats: cfg.on_stats }..., }
+        _cfg                = { internals.templates._new_stats..., }
+        _cfg.on_stats       = @cfg.on_stats       if @cfg.on_stats?
+        _cfg.on_exhaustion  = @cfg.on_exhaustion  if @cfg.on_exhaustion?
+        _cfg.max_retries    = @cfg.max_retries    if @cfg.max_retries?
+        cfg                 = { _cfg..., cfg..., }
+        console.debug 'Ω__11', cfg.on_stats
         return new internals.Stats cfg
 
       #-------------------------------------------------------------------------------------------------------
@@ -265,7 +268,7 @@ UNSTABLE_BRICS =
         else if max_length?
           return { min_length: ( min_length ? 1 ), max_length, }
         return { min_length: length, max_length: length, } if length?
-        throw new Error "Ω__10 must set at least one of `length`, `min_length`, `max_length`"
+        throw new Error "Ω__12 must set at least one of `length`, `min_length`, `max_length`"
 
       #-------------------------------------------------------------------------------------------------------
       _get_random_length: ({ length = 1, min_length = null, max_length = null, }={}) ->
@@ -288,7 +291,7 @@ UNSTABLE_BRICS =
         return ( filter                   ) if ( typeof filter ) is 'function'
         return ( ( x ) -> filter.test x   ) if filter instanceof RegExp
         ### TAINT use `rpr`, typing ###
-        throw new Error "Ω__11 unable to turn argument into a filter: #{argument}"
+        throw new Error "Ω__13 unable to turn argument into a filter: #{argument}"
 
 
       #=======================================================================================================
@@ -306,40 +309,47 @@ UNSTABLE_BRICS =
       float_producer: ( cfg ) ->
         { min,
           max,
-          filter,     } = { internals.templates.float_producer..., cfg..., }
+          filter,
+          on_stats,
+          on_exhaustion,
+          max_retries,  } = { internals.templates.float_producer..., cfg..., }
         #.....................................................................................................
         { min,
-          max,        } = @_get_min_max { min, max, }
-        filter          = @_get_filter filter
+          max,          } = @_get_min_max { min, max, }
+        filter            = @_get_filter filter
         #.....................................................................................................
         return float = =>
-          stats         = @_new_stats { name: 'float', }
-          #.....................................................................................................
+          stats = @_new_stats { name: 'float', on_stats, on_exhaustion, max_retries, }
+          #...................................................................................................
           loop
             R = min + @_float() * ( max - min )
             return ( stats.finish R ) if ( filter R )
             return sentinel unless ( sentinel = stats.retry() ) is go_on
-          #.....................................................................................................
+          #...................................................................................................
           return null
 
       #-------------------------------------------------------------------------------------------------------
       integer_producer: ( cfg ) ->
         { min,
           max,
-          filter,     } = { internals.templates.float_producer..., cfg..., }
+          filter,
+          on_stats,
+          on_exhaustion,
+          max_retries,  } = { internals.templates.float_producer..., cfg..., }
         #.....................................................................................................
         { min,
-          max,        } = @_get_min_max { min, max, }
-        filter          = @_get_filter filter
+          max,          } = @_get_min_max { min, max, }
+        filter            = @_get_filter filter
         #.....................................................................................................
         return integer = =>
-          stats = @_new_stats { name: 'integer', }
-          #.....................................................................................................
+          stats = @_new_stats { name: 'integer', on_stats, on_exhaustion, max_retries, }
+          console.debug 'Ω__14', stats.on_stats
+          #...................................................................................................
           loop
             R = Math.round min + @_float() * ( max - min )
             return ( stats.finish R ) if ( filter R )
             return sentinel unless ( sentinel = stats.retry() ) is go_on
-          #.....................................................................................................
+          #...................................................................................................
           return null
 
       #-------------------------------------------------------------------------------------------------------
@@ -348,22 +358,25 @@ UNSTABLE_BRICS =
         { min,
           max,
           prefilter,
-          filter,     } = { internals.templates.chr_producer..., cfg..., }
+          filter,
+          on_stats,
+          on_exhaustion,
+          max_retries,  } = { internals.templates.chr_producer..., cfg..., }
         #.....................................................................................................
         { min,
-          max,        } = @_get_min_max { min, max, }
+          max,          } = @_get_min_max { min, max, }
         #.....................................................................................................
-        prefilter       = @_get_filter prefilter
-        filter          = @_get_filter filter
+        prefilter         = @_get_filter prefilter
+        filter            = @_get_filter filter
         #.....................................................................................................
         return chr = =>
-          stats = @_new_stats { name: 'chr', }
-          #.....................................................................................................
+          stats = @_new_stats { name: 'chr', on_stats, on_exhaustion, max_retries, }
+          #...................................................................................................
           loop
             R = String.fromCodePoint @integer { min, max, }
             return ( stats.finish R ) if ( prefilter R ) and ( filter R )
             return sentinel unless ( sentinel = stats.retry() ) is go_on
-          #.....................................................................................................
+          #...................................................................................................
           return null
 
       #-------------------------------------------------------------------------------------------------------
@@ -375,7 +388,9 @@ UNSTABLE_BRICS =
           min_length,
           max_length,
           filter,
-          on_exhaustion } = { internals.templates.text_producer..., cfg..., }
+          on_stats,
+          on_exhaustion,
+          max_retries   } = { internals.templates.text_producer..., cfg..., }
         #.....................................................................................................
         { min,
           max,          } = @_get_min_max { min, max, }
@@ -387,14 +402,14 @@ UNSTABLE_BRICS =
         filter            = @_get_filter filter
         #.....................................................................................................
         return text = =>
-          stats = @_new_stats { name: 'text', on_exhaustion, }
-          #.....................................................................................................
+          stats = @_new_stats { name: 'text', on_stats, on_exhaustion, max_retries, }
+          #...................................................................................................
           length = @integer { min: min_length, max: max_length, } unless length_is_const
           loop
             R = ( @chr { min, max, } for _ in [ 1 .. length ] ).join ''
             return ( stats.finish R ) if ( filter R )
             return sentinel unless ( sentinel = stats.retry() ) is go_on
-          #.....................................................................................................
+          #...................................................................................................
           return null
 
 
@@ -404,8 +419,11 @@ UNSTABLE_BRICS =
       set_of_chrs: ( cfg ) ->
         { min,
           max,
-          size,         } = { internals.templates.set_of_chrs..., cfg..., }
-        stats             = @_new_stats { name: 'set_of_chrs', }
+          size,
+          on_stats,
+          on_exhaustion,
+          max_retries,  } = { internals.templates.set_of_chrs..., cfg..., }
+        stats             = @_new_stats { name: 'set_of_chrs', on_stats, on_exhaustion, max_retries, }
         R                 = new Set()
         chr               = @chr_producer { min, max, }
         #.....................................................................................................
@@ -423,14 +441,17 @@ UNSTABLE_BRICS =
           size,
           min_length,
           max_length,
-          filter,     } = { internals.templates.set_of_texts..., cfg..., }
+          filter,
+          on_stats,
+          on_exhaustion,
+          max_retries,  } = { internals.templates.set_of_texts..., cfg..., }
         { min_length,
-          max_length, } = @_get_min_max_length { length, min_length, max_length, }
-        length_is_const = min_length is max_length
-        length          = min_length
-        R               = new Set()
-        text            = @text_producer { min, max, length, min_length, max_length, filter, }
-        stats           = @_new_stats { name: 'set_of_texts', }
+          max_length,   } = @_get_min_max_length { length, min_length, max_length, }
+        length_is_const   = min_length is max_length
+        length            = min_length
+        R                 = new Set()
+        text              = @text_producer { min, max, length, min_length, max_length, filter, }
+        stats             = @_new_stats { name: 'set_of_texts', on_stats, on_exhaustion, max_retries, }
         #.....................................................................................................
         loop
           R.add text()
