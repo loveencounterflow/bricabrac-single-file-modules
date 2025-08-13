@@ -254,6 +254,14 @@ UNSTABLE_BRICS =
           R.add @text { min, max, length, }
         return ( finish R )
 
+      #-------------------------------------------------------------------------------------------------------
+      walk: ({ producer, n = 1, }={}) ->
+        count = 0
+        loop
+          count++; break if count > n
+          yield producer()
+        return null
+
     #=========================================================================================================
     return exports = { Get_random, internals, }
 
