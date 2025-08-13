@@ -21,6 +21,7 @@
   characters
 * **`[—]`** Provide internal implementations that capture attempt counts for testing, better insights
 * **`[—]`** use custom class for `stats` that handles excessive retry counts
+* **`[—]`** implement iterators
 
 ### Errors
 
