@@ -17,6 +17,7 @@ UNSTABLE_GETRANDOM_BRICS =
     # max_rounds = 9_999
     max_rounds  = 1_000
     go_on       = Symbol 'go_on'
+    dont_go_on  = Symbol 'dont_go_on'
     clean       = ( x ) -> Object.fromEntries ( [ k, v, ] for k, v of x when v? )
 
     #---------------------------------------------------------------------------------------------------------
@@ -125,6 +126,7 @@ UNSTABLE_GETRANDOM_BRICS =
         hide @, '_rounds',        0
         hide @, 'on_exhaustion',  switch true
           when on_exhaustion            is 'error'    then -> throw new Error "Ω___4 exhausted"
+          when on_exhaustion            is 'stop'     then -> dont_go_on
           when ( typeof on_exhaustion ) is 'function' then on_exhaustion
           ### TAINT use rpr, typing ###
           else throw new Error "Ω___5 illegal value for on_exhaustion: #{on_exhaustion}"
@@ -414,7 +416,7 @@ UNSTABLE_GETRANDOM_BRICS =
             continue
           ### TAINT implement 'stop'ping the loop ###
           continue if ( sentinel = stats.retry() ) is go_on
-          # yield sentinel unless on_exhaustion is 'stop'
+          break if sentinel is dont_go_on
         return ( stats.finish null )
 
 
