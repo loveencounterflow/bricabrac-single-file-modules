@@ -14,22 +14,22 @@ UNSTABLE_GETRANDOM_BRICS =
     ### TAINT replace ###
     # { default: _get_unique_text,  } = require 'unique-string'
     chr_re      = ///^(?:\p{L}|\p{Zs}|\p{Z}|\p{M}|\p{N}|\p{P}|\p{S})$///v
-    # max_retries = 9_999
-    max_retries = 1_000
+    # max_rounds = 9_999
+    max_rounds  = 1_000
     go_on       = Symbol 'go_on'
     clean       = ( x ) -> Object.fromEntries ( [ k, v, ] for k, v of x when v? )
 
     #---------------------------------------------------------------------------------------------------------
     internals = # Object.freeze
       chr_re:             chr_re
-      max_retries:        max_retries
+      max_rounds:         max_rounds
       go_on:              go_on
       clean:              clean
       #.......................................................................................................
       templates: Object.freeze
         random_tools_cfg: Object.freeze
           seed:               null
-          max_retries:        max_retries
+          max_rounds:         max_rounds
           # unique_count:   1_000
           on_stats:           null
           unicode_cid_range:  Object.freeze [ 0x0000, 0x10ffff ]
@@ -64,17 +64,17 @@ UNSTABLE_GETRANDOM_BRICS =
           on_exhaustion:      'error'
         stats:
           float:
-            retries:          -1
+            rounds:          -1
           integer:
-            retries:          -1
+            rounds:          -1
           chr:
-            retries:          -1
+            rounds:          -1
           text:
-            retries:          -1
+            rounds:          -1
           set_of_chrs:
-            retries:          -1
+            rounds:          -1
           set_of_texts:
-            retries:          -1
+            rounds:          -1
 
     #---------------------------------------------------------------------------------------------------------
     ```
@@ -115,12 +115,12 @@ UNSTABLE_GETRANDOM_BRICS =
     class internals.Stats
 
       #-------------------------------------------------------------------------------------------------------
-      constructor: ({ name, on_exhaustion = 'error', on_stats = null, max_retries = null }) ->
+      constructor: ({ name, on_exhaustion = 'error', on_stats = null, max_rounds = null }) ->
         @name                   = name
-        @max_retries            = max_retries ? internals.templates.random_tools_cfg.max_retries
+        @max_rounds            = max_rounds ? internals.templates.random_tools_cfg.max_rounds
         on_exhaustion          ?= 'error'
         hide @, '_finished',      false
-        hide @, '_retries',       0
+        hide @, '_rounds',        0
         hide @, 'on_exhaustion',  switch true
           when on_exhaustion            is 'error'    then -> throw new Error "Ω___4 exhausted"
           when ( typeof on_exhaustion ) is 'function' then on_exhaustion
@@ -136,7 +136,7 @@ UNSTABLE_GETRANDOM_BRICS =
       #-------------------------------------------------------------------------------------------------------
       retry: ->
         throw new Error "Ω___7 stats has already finished" if @_finished
-        @_retries++
+        @_rounds++
         return @on_exhaustion() if @exhausted
         return go_on
 
@@ -144,13 +144,13 @@ UNSTABLE_GETRANDOM_BRICS =
       finish: ( R ) ->
         throw new Error "Ω___8 stats has already finished" if @_finished
         @_finished = true
-        @on_stats { name: @name, retries: @retries, R, } if @on_stats?
+        @on_stats { name: @name, rounds: @rounds, R, } if @on_stats?
         return R
 
       #-------------------------------------------------------------------------------------------------------
       set_getter @::, 'finished',   -> @_finished
-      set_getter @::, 'retries',    -> @_retries
-      set_getter @::, 'exhausted',  -> @_retries > @max_retries
+      set_getter @::, 'rounds',    -> @_rounds
+      set_getter @::, 'exhausted',  -> @_rounds > @max_rounds
 
     #=========================================================================================================
     class Get_random
@@ -223,14 +223,14 @@ UNSTABLE_GETRANDOM_BRICS =
           filter,
           on_stats,
           on_exhaustion,
-          max_retries,  } = { internals.templates.float_producer..., cfg..., }
+          max_rounds,  } = { internals.templates.float_producer..., cfg..., }
         #.....................................................................................................
         { min,
           max,          } = @_get_min_max { min, max, }
         filter            = @_get_filter filter
         #.....................................................................................................
         return float = =>
-          stats = @_new_stats { name: 'float', ( clean { on_stats, on_exhaustion, max_retries, } )..., }
+          stats = @_new_stats { name: 'float', ( clean { on_stats, on_exhaustion, max_rounds, } )..., }
           #...................................................................................................
           loop
             R = min + @_float() * ( max - min )
@@ -246,14 +246,14 @@ UNSTABLE_GETRANDOM_BRICS =
           filter,
           on_stats,
           on_exhaustion,
-          max_retries,  } = { internals.templates.float_producer..., cfg..., }
+          max_rounds,  } = { internals.templates.float_producer..., cfg..., }
         #.....................................................................................................
         { min,
           max,          } = @_get_min_max { min, max, }
         filter            = @_get_filter filter
         #.....................................................................................................
         return integer = =>
-          stats = @_new_stats { name: 'integer', ( clean { on_stats, on_exhaustion, max_retries, } )..., }
+          stats = @_new_stats { name: 'integer', ( clean { on_stats, on_exhaustion, max_rounds, } )..., }
           #...................................................................................................
           loop
             R = Math.round min + @_float() * ( max - min )
@@ -271,7 +271,7 @@ UNSTABLE_GETRANDOM_BRICS =
           filter,
           on_stats,
           on_exhaustion,
-          max_retries,  } = { internals.templates.chr_producer..., cfg..., }
+          max_rounds,  } = { internals.templates.chr_producer..., cfg..., }
         #.....................................................................................................
         { min,
           max,          } = @_get_min_max { min, max, }
@@ -280,7 +280,7 @@ UNSTABLE_GETRANDOM_BRICS =
         filter            = @_get_filter filter
         #.....................................................................................................
         return chr = =>
-          stats = @_new_stats { name: 'chr', ( clean { on_stats, on_exhaustion, max_retries, } )..., }
+          stats = @_new_stats { name: 'chr', ( clean { on_stats, on_exhaustion, max_rounds, } )..., }
           #...................................................................................................
           loop
             R = String.fromCodePoint @integer { min, max, }
@@ -300,7 +300,7 @@ UNSTABLE_GETRANDOM_BRICS =
           filter,
           on_stats,
           on_exhaustion,
-          max_retries   } = { internals.templates.text_producer..., cfg..., }
+          max_rounds   } = { internals.templates.text_producer..., cfg..., }
         #.....................................................................................................
         { min,
           max,          } = @_get_min_max { min, max, }
@@ -312,7 +312,7 @@ UNSTABLE_GETRANDOM_BRICS =
         filter            = @_get_filter filter
         #.....................................................................................................
         return text = =>
-          stats = @_new_stats { name: 'text', ( clean { on_stats, on_exhaustion, max_retries, } )..., }
+          stats = @_new_stats { name: 'text', ( clean { on_stats, on_exhaustion, max_rounds, } )..., }
           #...................................................................................................
           length = @integer { min: min_length, max: max_length, } unless length_is_const
           loop
@@ -332,8 +332,8 @@ UNSTABLE_GETRANDOM_BRICS =
           size,
           on_stats,
           on_exhaustion,
-          max_retries,  } = { internals.templates.set_of_chrs..., cfg..., }
-        stats             = @_new_stats { name: 'set_of_chrs', on_stats, on_exhaustion, max_retries, }
+          max_rounds,  } = { internals.templates.set_of_chrs..., cfg..., }
+        stats             = @_new_stats { name: 'set_of_chrs', on_stats, on_exhaustion, max_rounds, }
         R                 = new Set()
         chr               = @chr_producer { min, max, }
         #.....................................................................................................
@@ -354,14 +354,14 @@ UNSTABLE_GETRANDOM_BRICS =
           filter,
           on_stats,
           on_exhaustion,
-          max_retries,  } = { internals.templates.set_of_texts..., cfg..., }
+          max_rounds,  } = { internals.templates.set_of_texts..., cfg..., }
         { min_length,
           max_length,   } = @_get_min_max_length { length, min_length, max_length, }
         length_is_const   = min_length is max_length
         length            = min_length
         R                 = new Set()
         text              = @text_producer { min, max, length, min_length, max_length, filter, }
-        stats             = @_new_stats { name: 'set_of_texts', on_stats, on_exhaustion, max_retries, }
+        stats             = @_new_stats { name: 'set_of_texts', on_stats, on_exhaustion, max_rounds, }
         #.....................................................................................................
         loop
           R.add text()
@@ -378,9 +378,9 @@ UNSTABLE_GETRANDOM_BRICS =
           n,
           on_stats,
           on_exhaustion,
-          max_retries   } = { internals.templates.walk..., cfg..., }
+          max_rounds   } = { internals.templates.walk..., cfg..., }
         count             = 0
-        stats             = @_new_stats { name: 'walk', on_stats, on_exhaustion, max_retries, }
+        stats             = @_new_stats { name: 'walk', on_stats, on_exhaustion, max_rounds, }
         loop
           count++; break if count > n
           yield producer()
@@ -395,9 +395,9 @@ UNSTABLE_GETRANDOM_BRICS =
           n,
           on_stats,
           on_exhaustion,
-          max_retries   } = { internals.templates.walk..., cfg..., }
+          max_rounds   } = { internals.templates.walk..., cfg..., }
         seen             ?= new Set()
-        stats             = @_new_stats { name: 'walk_unique', on_stats, on_exhaustion, max_retries, }
+        stats             = @_new_stats { name: 'walk_unique', on_stats, on_exhaustion, max_rounds, }
         old_size          = seen.size
         loop
           seen.add Y  = text()
