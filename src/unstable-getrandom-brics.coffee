@@ -18,7 +18,19 @@ UNSTABLE_GETRANDOM_BRICS =
     max_rounds  = 1_000
     go_on       = Symbol 'go_on'
     dont_go_on  = Symbol 'dont_go_on'
+    #---------------------------------------------------------------------------------------------------------
+    ### NOTE Candidates for Future Single-File Module ###
     clean       = ( x ) -> Object.fromEntries ( [ k, v, ] for k, v of x when v? )
+    trim_set    = ( set, purview ) ->
+      return null unless ( delta = set.size - purview ) > 0
+      ### TAINT questionable micro-optimization? ###
+      if delta is 1
+        for value from set
+          set.delete value
+          break
+      else
+        set.delete value for value in [ set..., ][ 0 ... delta ]
+      return null
 
     #---------------------------------------------------------------------------------------------------------
     internals = # Object.freeze
@@ -132,28 +144,28 @@ UNSTABLE_GETRANDOM_BRICS =
         hide @, '_finished',      false
         hide @, '_rounds',        0
         hide @, 'on_exhaustion',  switch true
-          when on_exhaustion            is 'error'    then -> throw new Error "Ω___4 exhausted"
+          when on_exhaustion            is 'error'    then -> throw new Error "Ω___1 exhausted"
           when on_exhaustion            is 'stop'     then -> dont_go_on
           when ( typeof on_exhaustion ) is 'function' then on_exhaustion
           ### TAINT use rpr, typing ###
-          else throw new Error "Ω___5 illegal value for on_exhaustion: #{on_exhaustion}"
+          else throw new Error "Ω___2 illegal value for on_exhaustion: #{on_exhaustion}"
         hide @, 'on_stats',       switch true
           when ( typeof on_stats ) is 'function'  then on_stats
           when ( not on_stats? )                  then null
           ### TAINT use rpr, typing ###
-          else throw new Error "Ω___6 illegal value for on_stats: #{on_stats}"
+          else throw new Error "Ω___3 illegal value for on_stats: #{on_stats}"
         return undefined
 
       #-------------------------------------------------------------------------------------------------------
       retry: ->
-        throw new Error "Ω___7 stats has already finished" if @_finished
+        throw new Error "Ω___4 stats has already finished" if @_finished
         @_rounds++
         return @on_exhaustion() if @exhausted
         return go_on
 
       #-------------------------------------------------------------------------------------------------------
       finish: ( R ) ->
-        throw new Error "Ω___8 stats has already finished" if @_finished
+        throw new Error "Ω___5 stats has already finished" if @_finished
         @_finished = true
         @on_stats { name: @name, rounds: @rounds, R, } if @on_stats?
         return R
@@ -190,7 +202,7 @@ UNSTABLE_GETRANDOM_BRICS =
         else if max_length?
           return { min_length: ( min_length ? 1 ), max_length, }
         return { min_length: length, max_length: length, } if length?
-        throw new Error "Ω__12 must set at least one of `length`, `min_length`, `max_length`"
+        throw new Error "Ω___6 must set at least one of `length`, `min_length`, `max_length`"
 
       #-------------------------------------------------------------------------------------------------------
       _get_random_length: ({ length = 1, min_length = null, max_length = null, }={}) ->
@@ -213,7 +225,7 @@ UNSTABLE_GETRANDOM_BRICS =
         return ( filter                   ) if ( typeof filter ) is 'function'
         return ( ( x ) -> filter.test x   ) if filter instanceof RegExp
         ### TAINT use `rpr`, typing ###
-        throw new Error "Ω__13 unable to turn argument into a filter: #{argument}"
+        throw new Error "Ω___7 unable to turn argument into a filter: #{argument}"
 
 
       #=======================================================================================================
@@ -413,27 +425,23 @@ UNSTABLE_GETRANDOM_BRICS =
           max_rounds    } = { internals.templates.walk_unique..., cfg..., }
         seen             ?= new Set()
         stats             = @_new_stats { name: 'walk_unique', on_stats, on_exhaustion, max_rounds, }
-        old_size          = seen.size
-        #.....................................................................................................
-        trim_seen         = ->
-          while seen.size >= purview
-            for value from seen
-              seen.delete value
-              break
-          return null
+        count             = 0
         #.....................................................................................................
         loop
-          trim_seen()
-          seen.add Y  = producer()
+          trim_set seen, purview
+          old_size = seen.size
+          seen.add ( Y = producer() )
           if seen.size > old_size
             yield Y
-            old_size    = seen.size
-            break if seen.size >= n
+            count++
+            break if count >= n
             continue
           ### TAINT implement 'stop'ping the loop ###
           continue if ( sentinel = stats.retry() ) is go_on
-          break if sentinel is dont_go_on
-        return ( stats.finish null )
+          if sentinel is dont_go_on
+            sentinel = null
+            break
+        return ( stats.finish sentinel )
 
 
     #=========================================================================================================
