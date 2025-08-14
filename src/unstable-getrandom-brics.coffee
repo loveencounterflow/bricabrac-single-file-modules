@@ -397,7 +397,7 @@ UNSTABLE_GETRANDOM_BRICS =
       walk_unique: ( cfg ) ->
         { producer,
           seen,
-          window,
+          # window,
           n,
           on_stats,
           on_exhaustion,
@@ -407,12 +407,14 @@ UNSTABLE_GETRANDOM_BRICS =
         old_size          = seen.size
         loop
           seen.add Y  = producer()
-          yield Y if seen.size > old_size
-          old_size    = seen.size
-          break if seen.size >= n
+          if seen.size > old_size
+            yield Y
+            old_size    = seen.size
+            break if seen.size >= n
+            continue
           ### TAINT implement 'stop'ping the loop ###
           continue if ( sentinel = stats.retry() ) is go_on
-          yield sentinel unless on_exhaustion is 'stop'
+          # yield sentinel unless on_exhaustion is 'stop'
         return ( stats.finish null )
 
 
