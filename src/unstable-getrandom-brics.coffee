@@ -29,7 +29,6 @@ UNSTABLE_GETRANDOM_BRICS =
       templates: Object.freeze
         random_tools_cfg: Object.freeze
           seed:               null
-          size:               1_000
           max_retries:        max_retries
           # unique_count:   1_000
           on_stats:           null
@@ -374,12 +373,41 @@ UNSTABLE_GETRANDOM_BRICS =
       #=======================================================================================================
       # WALKERS
       #-------------------------------------------------------------------------------------------------------
-      walk: ({ producer, n = 1, }={}) ->
-        count = 0
+      walk: ( cfg ) ->
+        { producer,
+          n,
+          on_stats,
+          on_exhaustion,
+          max_retries   } = { internals.templates.walk..., cfg..., }
+        count             = 0
+        stats             = @_new_stats { name: 'walk', on_stats, on_exhaustion, max_retries, }
         loop
           count++; break if count > n
           yield producer()
         return null
+
+      #-------------------------------------------------------------------------------------------------------
+      walk_unique: ( cfg ) ->
+        { producer,
+          seen,
+          window,
+          n,
+          on_stats,
+          on_exhaustion,
+          max_retries   } = { internals.templates.walk..., cfg..., }
+        seen             ?= new Set()
+        stats             = @_new_stats { name: 'walk_unique', on_stats, on_exhaustion, max_retries, }
+        old_size          = seen.size
+        loop
+          seen.add Y  = text()
+          yield Y if seen.size > old_size
+          old_size    = seen.size
+          break if seen.size >= n
+          ### TAINT implement 'stop'ping the loop ###
+          continue if ( sentinel = stats.retry() ) is go_on
+          yield sentinel unless on_exhaustion is 'stop'
+        return ( stats.finish null )
+
 
     #=========================================================================================================
     internals = Object.freeze internals
