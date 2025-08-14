@@ -7,6 +7,7 @@
     - [Random](#random)
       - [Random: Implementation Structure](#random-implementation-structure)
     - [Errors](#errors)
+    - [Other](#other)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -63,5 +64,9 @@
 
 * **`[—]`** solution to capture existing error, issue new one a la Python's `raise Error_2 from Error_1`
 
+### Other
+
+* **`[—]`** publish `clean()` solution to the 'Assign-Problem with Intermediate Nulls and Undefineds' in the
+  context of a Bric-A-Brac SFModule
 
 
