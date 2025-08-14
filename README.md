@@ -52,6 +52,7 @@
 
 ![red dot](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAJ/ycycAAAAASUVORK5CYII=)
 
+<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Ccircle cx='100' cy='100' r='80' fill='blue'/%3E%3C/svg%3E" alt="Blue Circle" />
 
 * each type has dedicated methods to produce instances of each type:
   * a convenience function bearing the name of the type: `Get_random::float`
