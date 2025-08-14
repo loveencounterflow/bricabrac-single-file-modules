@@ -34,6 +34,16 @@ UNSTABLE_GETRANDOM_BRICS =
           on_stats:           null
           unicode_cid_range:  Object.freeze [ 0x0000, 0x10ffff ]
           on_exhaustion:      'error'
+        int_producer:
+          min:                0
+          max:                1
+          filter:             null
+          on_exhaustion:      'error'
+        float_producer:
+          min:                0
+          max:                1
+          filter:             null
+          on_exhaustion:      'error'
         chr_producer:
           min:                0x000000
           max:                0x10ffff
@@ -44,6 +54,7 @@ UNSTABLE_GETRANDOM_BRICS =
           min:                0x000000
           max:                0x10ffff
           length:             1
+          size:               2
           min_length:         null
           max_length:         null
           filter:             null
@@ -52,15 +63,6 @@ UNSTABLE_GETRANDOM_BRICS =
           min:                0x000000
           max:                0x10ffff
           size:               2
-          on_exhaustion:      'error'
-        text_producer:
-          min:                0x000000
-          max:                0x10ffff
-          length:             1
-          size:               2
-          min_length:         null
-          max_length:         null
-          filter:             null
           on_exhaustion:      'error'
         stats:
           float:
@@ -208,10 +210,12 @@ UNSTABLE_GETRANDOM_BRICS =
       #=======================================================================================================
       # CONVENIENCE
       #-------------------------------------------------------------------------------------------------------
-      float:    ({ min = 0, max = 1, }={}) -> min + @_float() * ( max - min )
-      integer:  ({ min = 0, max = 1, }={}) -> Math.round @float { min, max, }
-      chr:      ( P... ) -> ( @chr_producer P... )()
-      text:     ( P... ) -> ( @text_producer P... )()
+      # float:    ({ min = 0, max = 1, }={}) -> min + @_float() * ( max - min )
+      # integer:  ({ min = 0, max = 1, }={}) -> Math.round @float { min, max, }
+      float:    ( P... ) -> ( @float_producer   P... )()
+      integer:  ( P... ) -> ( @integer_producer P... )()
+      chr:      ( P... ) -> ( @chr_producer     P... )()
+      text:     ( P... ) -> ( @text_producer    P... )()
 
 
       #=======================================================================================================
@@ -389,27 +393,27 @@ UNSTABLE_GETRANDOM_BRICS =
           # return sentinel unless ( sentinel = stats.retry() ) is go_on
         return ( stats.finish null )
 
-      # #-------------------------------------------------------------------------------------------------------
-      # walk_unique: ( cfg ) ->
-      #   { producer,
-      #     seen,
-      #     window,
-      #     n,
-      #     on_stats,
-      #     on_exhaustion,
-      #     max_rounds   } = { internals.templates.walk..., cfg..., }
-      #   seen             ?= new Set()
-      #   stats             = @_new_stats { name: 'walk_unique', on_stats, on_exhaustion, max_rounds, }
-      #   old_size          = seen.size
-      #   loop
-      #     seen.add Y  = text()
-      #     yield Y if seen.size > old_size
-      #     old_size    = seen.size
-      #     break if seen.size >= n
-      #     ### TAINT implement 'stop'ping the loop ###
-      #     continue if ( sentinel = stats.retry() ) is go_on
-      #     yield sentinel unless on_exhaustion is 'stop'
-      #   return ( stats.finish null )
+      #-------------------------------------------------------------------------------------------------------
+      walk_unique: ( cfg ) ->
+        { producer,
+          seen,
+          window,
+          n,
+          on_stats,
+          on_exhaustion,
+          max_rounds    } = { internals.templates.walk..., cfg..., }
+        seen             ?= new Set()
+        stats             = @_new_stats { name: 'walk_unique', on_stats, on_exhaustion, max_rounds, }
+        old_size          = seen.size
+        loop
+          seen.add Y  = producer()
+          yield Y if seen.size > old_size
+          old_size    = seen.size
+          break if seen.size >= n
+          ### TAINT implement 'stop'ping the loop ###
+          continue if ( sentinel = stats.retry() ) is go_on
+          yield sentinel unless on_exhaustion is 'stop'
+        return ( stats.finish null )
 
 
     #=========================================================================================================
