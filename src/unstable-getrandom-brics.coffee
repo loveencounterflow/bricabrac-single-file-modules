@@ -65,6 +65,13 @@ UNSTABLE_GETRANDOM_BRICS =
           max:                0x10ffff
           size:               2
           on_exhaustion:      'error'
+        walk:
+          producer:           null
+          n:                  Infinity
+        walk_unique:
+          producer:           null
+          n:                  Infinity
+          purview:            Infinity
         stats:
           float:
             rounds:          -1
@@ -399,15 +406,24 @@ UNSTABLE_GETRANDOM_BRICS =
       walk_unique: ( cfg ) ->
         { producer,
           seen,
-          # window,
+          purview,
           n,
           on_stats,
           on_exhaustion,
-          max_rounds    } = { internals.templates.walk..., cfg..., }
+          max_rounds    } = { internals.templates.walk_unique..., cfg..., }
         seen             ?= new Set()
         stats             = @_new_stats { name: 'walk_unique', on_stats, on_exhaustion, max_rounds, }
         old_size          = seen.size
+        #.....................................................................................................
+        trim_seen         = ->
+          while seen.size >= purview
+            for value from seen
+              seen.delete value
+              break
+          return null
+        #.....................................................................................................
         loop
+          trim_seen()
           seen.add Y  = producer()
           if seen.size > old_size
             yield Y
