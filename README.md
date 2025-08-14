@@ -71,10 +71,16 @@
   duplicates; `Get_random` can help with that.
 
 * each type has dedicated methods to produce instances of each type:
-  * a convenience function bearing the name of the type: `Get_random::float`
+  * a convenience function bearing the name of the type: `Get_random::float()`, `Get_random::chr()` and so
+    on. These convenience functions will call the associated 'producer methods'
+    `Get_random::float_producer()`, `Get_random::chr_producer()` and so on which will analyze the arguments
+    given and return a function that in turn will produce random values according to the specs indicated by
+    the arguments.
 
 
 * **`[—]`** implement a 'raw codepoint' convenience method?
+* **`[—]`** adapt `Get_random::float()`, `Get_random::integer()` to match `Get_random::chr()`,
+  `Get_random::text()`
 
 ### Errors
 
