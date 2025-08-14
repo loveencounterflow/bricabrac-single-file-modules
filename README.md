@@ -37,6 +37,7 @@
   * ...that, in the case of `text`s, are not shorter and not longer than a given pair of `min`imum`_length`
     and `max`imum`_length`
   * ...that are unique in relation to a given collection (IOW that are new to a given collection)
+
 * the foundational Pseudo-Random Number Generator (PRNG) that enables the generation of pseudo-random values
   is piece of code that I [found on the
   Internet](https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript)
@@ -47,15 +48,33 @@
   > tweaking the constants. It's potentially one of the better 32-bit PRNGs so far; even the author of
   > Mulberry32 considers it to be the better choice. It's also just as fast.
 
-* Like JavaScript's built-in `Math.random()` generator, this PRNG will generate evenly distributed values between
-  `0` (inclusive) and `1` (exclusive) (i.e. *t* )
+* Like JavaScript's built-in `Math.random()` generator, this PRNG will generate evenly distributed values
+  `t` between `0` (inclusive) and `1` (exclusive) (i.e. `0 < t ≤ 1`), but other than `Math.random()`, it
+  allows to be given a `seed` to set its state to a known fixed point, from whence the series of random
+  numbers to be generated will remain constant for each instantiation. This randomly-deterministic (or
+  deterministically random, or 'random but foreseeable') operation is valuable for testing.
 
-![red dot](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAJ/ycycAAAAASUVORK5CYII=)
+* Since the random core value `t` (accessible as `Get_random::_float()`) is always in the interval `[0,1)`,
+  it's straightforward to both scale (stretch or shrink) it to any other length `[0,p)` and / or transpose
+  (shift left or right) it to any other starting point `[q,q+1)`, meaning it can be projected into any
+  interval `[min,max)` by computing `j = min + ( t * ( max - min ) )`. That projected value `j` can then be
+  rounded e.g. to an integer number `n`, and that integer `n` can be interpreted as a [Unicode Code
+  Point](https://de.wikipedia.org/wiki/Codepoint) and be used in `String.fromCodePoint()` to obtain a
+  'character'. Since many Unicode codepoints are unassigned or contain control characters, `Get_random`
+  methods will filter codepoints to include only 'printable' characters. Lastly, characters can be
+  concatenated to strings which, again, can be made shorter or longer, be built from filtered codepoints
+  from a narrowed set like, say, `/^[a-zA-ZäöüÄÖÜß]$/` (most commonly used letters to write German), or
+  adhere to some predefined pattern or other arbitrary restrictions. It all comes out of `[0,1)` which I
+  find amazing.
 
-<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Ccircle cx='100' cy='100' r='80' fill='blue'/%3E%3C/svg%3E" alt="Blue Circle" />
+* A further desirable restriction on random values that is sometimes encountered is the exclusion of
+  duplicates; `Get_random` can help with that.
 
 * each type has dedicated methods to produce instances of each type:
   * a convenience function bearing the name of the type: `Get_random::float`
+
+
+* **`[—]`** implement a 'raw codepoint' convenience method?
 
 ### Errors
 
