@@ -384,7 +384,8 @@ UNSTABLE_GETRANDOM_BRICS =
         loop
           count++; break if count > n
           yield producer()
-        return null
+          return sentinel unless ( sentinel = stats.retry() ) is go_on
+        return ( stats.finish null )
 
       #-------------------------------------------------------------------------------------------------------
       walk_unique: ( cfg ) ->
