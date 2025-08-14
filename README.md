@@ -81,6 +81,7 @@
 * **`[—]`** implement a 'raw codepoint' convenience method?
 * **`[—]`** adapt `Get_random::float()`, `Get_random::integer()` to match `Get_random::chr()`,
   `Get_random::text()`
+* **`[—]`** ensure `Get_random::cfgon_stats` is called when given even when missing or `null` in method call
 
 ### Errors
 

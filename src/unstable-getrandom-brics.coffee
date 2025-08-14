@@ -360,12 +360,11 @@ UNSTABLE_GETRANDOM_BRICS =
           max_rounds,   } = { internals.templates.set_of_chrs..., cfg..., }
         stats             = @_new_stats { name: 'set_of_chrs', on_stats, on_exhaustion, max_rounds, }
         R                 = new Set()
-        chr               = @chr_producer { min, max, }
+        producer          = @chr_producer { min, max, on_stats, on_exhaustion, max_rounds, }
+        R                 = new Set()
         #.....................................................................................................
-        loop
-          R.add chr()
-          break if R.size >= size
-          return sentinel unless ( sentinel = stats.retry() ) is go_on
+        for chr from @walk_unique { producer, n: size, seen: R, on_stats, on_exhaustion, max_rounds, }
+          null
         return ( stats.finish R )
 
       #-------------------------------------------------------------------------------------------------------
@@ -385,15 +384,13 @@ UNSTABLE_GETRANDOM_BRICS =
         length_is_const   = min_length is max_length
         length            = min_length
         R                 = new Set()
-        text              = @text_producer { min, max, length, min_length, max_length, filter, }
+        producer          = @text_producer { min, max, length, min_length, max_length, filter, }
         stats             = @_new_stats { name: 'set_of_texts', on_stats, on_exhaustion, max_rounds, }
+        R                 = new Set()
         #.....................................................................................................
-        loop
-          R.add text()
-          break if R.size >= size
-          return sentinel unless ( sentinel = stats.retry() ) is go_on
+        for text from @walk_unique { producer, n: size, seen: R, on_stats, on_exhaustion, max_rounds, }
+          null
         return ( stats.finish R )
-
 
       #=======================================================================================================
       # WALKERS
@@ -436,7 +433,6 @@ UNSTABLE_GETRANDOM_BRICS =
             count++
             break if count >= n
             continue
-          ### TAINT implement 'stop'ping the loop ###
           continue if ( sentinel = stats.retry() ) is go_on
           if sentinel is dont_go_on
             sentinel = null
