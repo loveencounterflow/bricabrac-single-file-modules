@@ -223,7 +223,7 @@ UNSTABLE_GETRANDOM_BRICS =
           filter,
           on_stats,
           on_exhaustion,
-          max_rounds,  } = { internals.templates.float_producer..., cfg..., }
+          max_rounds,   } = { internals.templates.float_producer..., cfg..., }
         #.....................................................................................................
         { min,
           max,          } = @_get_min_max { min, max, }
@@ -246,7 +246,7 @@ UNSTABLE_GETRANDOM_BRICS =
           filter,
           on_stats,
           on_exhaustion,
-          max_rounds,  } = { internals.templates.float_producer..., cfg..., }
+          max_rounds,   } = { internals.templates.float_producer..., cfg..., }
         #.....................................................................................................
         { min,
           max,          } = @_get_min_max { min, max, }
@@ -271,7 +271,7 @@ UNSTABLE_GETRANDOM_BRICS =
           filter,
           on_stats,
           on_exhaustion,
-          max_rounds,  } = { internals.templates.chr_producer..., cfg..., }
+          max_rounds,   } = { internals.templates.chr_producer..., cfg..., }
         #.....................................................................................................
         { min,
           max,          } = @_get_min_max { min, max, }
@@ -300,7 +300,7 @@ UNSTABLE_GETRANDOM_BRICS =
           filter,
           on_stats,
           on_exhaustion,
-          max_rounds   } = { internals.templates.text_producer..., cfg..., }
+          max_rounds    } = { internals.templates.text_producer..., cfg..., }
         #.....................................................................................................
         { min,
           max,          } = @_get_min_max { min, max, }
@@ -332,7 +332,7 @@ UNSTABLE_GETRANDOM_BRICS =
           size,
           on_stats,
           on_exhaustion,
-          max_rounds,  } = { internals.templates.set_of_chrs..., cfg..., }
+          max_rounds,   } = { internals.templates.set_of_chrs..., cfg..., }
         stats             = @_new_stats { name: 'set_of_chrs', on_stats, on_exhaustion, max_rounds, }
         R                 = new Set()
         chr               = @chr_producer { min, max, }
@@ -354,7 +354,7 @@ UNSTABLE_GETRANDOM_BRICS =
           filter,
           on_stats,
           on_exhaustion,
-          max_rounds,  } = { internals.templates.set_of_texts..., cfg..., }
+          max_rounds,   } = { internals.templates.set_of_texts..., cfg..., }
         { min_length,
           max_length,   } = @_get_min_max_length { length, min_length, max_length, }
         length_is_const   = min_length is max_length
@@ -378,36 +378,38 @@ UNSTABLE_GETRANDOM_BRICS =
           n,
           on_stats,
           on_exhaustion,
-          max_rounds   } = { internals.templates.walk..., cfg..., }
+          max_rounds    } = { internals.templates.walk..., cfg..., }
         count             = 0
         stats             = @_new_stats { name: 'walk', on_stats, on_exhaustion, max_rounds, }
         loop
           count++; break if count > n
           yield producer()
-          return sentinel unless ( sentinel = stats.retry() ) is go_on
+          ### NODE any filtering &c happens in producer so no extraneous rounds are ever made by `walk()`,
+          therefore the `rounds` in the `walk` stats object always remains `0` ###
+          # return sentinel unless ( sentinel = stats.retry() ) is go_on
         return ( stats.finish null )
 
-      #-------------------------------------------------------------------------------------------------------
-      walk_unique: ( cfg ) ->
-        { producer,
-          seen,
-          window,
-          n,
-          on_stats,
-          on_exhaustion,
-          max_rounds   } = { internals.templates.walk..., cfg..., }
-        seen             ?= new Set()
-        stats             = @_new_stats { name: 'walk_unique', on_stats, on_exhaustion, max_rounds, }
-        old_size          = seen.size
-        loop
-          seen.add Y  = text()
-          yield Y if seen.size > old_size
-          old_size    = seen.size
-          break if seen.size >= n
-          ### TAINT implement 'stop'ping the loop ###
-          continue if ( sentinel = stats.retry() ) is go_on
-          yield sentinel unless on_exhaustion is 'stop'
-        return ( stats.finish null )
+      # #-------------------------------------------------------------------------------------------------------
+      # walk_unique: ( cfg ) ->
+      #   { producer,
+      #     seen,
+      #     window,
+      #     n,
+      #     on_stats,
+      #     on_exhaustion,
+      #     max_rounds   } = { internals.templates.walk..., cfg..., }
+      #   seen             ?= new Set()
+      #   stats             = @_new_stats { name: 'walk_unique', on_stats, on_exhaustion, max_rounds, }
+      #   old_size          = seen.size
+      #   loop
+      #     seen.add Y  = text()
+      #     yield Y if seen.size > old_size
+      #     old_size    = seen.size
+      #     break if seen.size >= n
+      #     ### TAINT implement 'stop'ping the loop ###
+      #     continue if ( sentinel = stats.retry() ) is go_on
+      #     yield sentinel unless on_exhaustion is 'stop'
+      #   return ( stats.finish null )
 
 
     #=========================================================================================================
