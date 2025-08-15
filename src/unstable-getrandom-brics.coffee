@@ -8,7 +8,7 @@ UNSTABLE_GETRANDOM_BRICS =
 
   #===========================================================================================================
   ### NOTE Future Single-File Module ###
-  require_random_tools: ->
+  require_get_random: ->
     { hide,
       set_getter,                 } = ( require './various-brics' ).require_managed_property_tools()
     ### TAINT replace ###
