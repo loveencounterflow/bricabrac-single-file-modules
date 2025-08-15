@@ -15,7 +15,7 @@ UNSTABLE_GETRANDOM_BRICS =
     # { default: _get_unique_text,  } = require 'unique-string'
     chr_re      = ///^(?:\p{L}|\p{Zs}|\p{Z}|\p{M}|\p{N}|\p{P}|\p{S})$///v
     # max_rounds = 9_999
-    max_rounds  = 1_000
+    max_rounds  = 10_000
     go_on       = Symbol 'go_on'
     dont_go_on  = Symbol 'dont_go_on'
     #---------------------------------------------------------------------------------------------------------
