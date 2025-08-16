@@ -131,7 +131,7 @@ BRICS =
         when 5 then R += '▋'
         when 6 then R += '▊'
         when 7 then R += '▉'
-      return "#{fg+bg}#{percentage_rpr} %▕#{R.padEnd 13}▏#{fg0+bg0}"
+      return "#{percentage_rpr} %▕#{fg+bg}#{R.padEnd 13}#{fg0+bg0}▏"
 
     #-----------------------------------------------------------------------------------------------------------
     hollow_percentage_bar = ( n ) ->
