@@ -87,6 +87,76 @@ BRICS =
     return exports = { get_command_line_result, get_wc_max_line_length, }
 
 
+  #===========================================================================================================
+  ### NOTE Future Single-File Module ###
+  require_progress_indicators: ->
+    { ansi_colors_and_effects: C, } = ( require './ansi-brics' ).require_ansi_colors_and_effects()
+    fg  = C.green
+    bg  = C.bg_black
+    fg0 = C.default
+    bg0 = C.bg_default
+
+    #-----------------------------------------------------------------------------------------------------------
+    get_percentage_bar = ( percentage ) ->
+      ###
+
+      🮂🮃🮄🮅🮆
+      ▁▂▃▄▅▆▇█
+
+      ▉▊▋▌▍▎▏🮇🮈🮉🮊🮋
+
+      ▐
+
+      🭰 🭱 🭲 🭳 🭴 🭵
+
+      🮀 🮁
+
+      🭶 🭷 🭸 🭹 🭺 🭻
+
+      🭽 🭾
+      🭼 🭿
+
+      ###
+      percentage_rpr  = ( Math.round percentage ).toString().padStart 3
+      if percentage is null or percentage <= 0  then return "#{percentage_rpr} %▕             ▏"
+      if percentage >= 100                      then return "#{percentage_rpr} %▕█████████████▏"
+      percentage      = ( Math.round percentage / 100 * 104 )
+      R               = '█'.repeat percentage // 8
+      switch percentage %% 8
+        when 0 then R += ' '
+        when 1 then R += '▏'
+        when 2 then R += '▎'
+        when 3 then R += '▍'
+        when 4 then R += '▌'
+        when 5 then R += '▋'
+        when 6 then R += '▊'
+        when 7 then R += '▉'
+      return "#{fg+bg}#{percentage_rpr} %▕#{R.padEnd 13}▏#{fg0+bg0}"
+
+    #-----------------------------------------------------------------------------------------------------------
+    hollow_percentage_bar = ( n ) ->
+      if n is null or n <= 0  then return '             '
+      # if n >= 100             then return '░░░░░░░░░░░░░'
+      if n >= 100             then return '▓▓▓▓▓▓▓▓▓▓▓▓▓'
+      n = ( Math.round n / 100 * 104 )
+      # R = '░'.repeat n // 8
+      R = '▓'.repeat n // 8
+      switch n %% 8
+        when 0 then R += ' '
+        when 1 then R += '▏'
+        when 2 then R += '▎'
+        when 3 then R += '▍'
+        when 4 then R += '▌'
+        when 5 then R += '▋'
+        when 6 then R += '▊'
+        when 7 then R += '▉'
+        # when 8 then R += '█'
+      return R.padEnd 13
+
+    #.......................................................................................................
+    return exports = { get_percentage_bar, }
+
+
 #===========================================================================================================
 Object.assign module.exports, BRICS
 
