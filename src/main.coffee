@@ -9,6 +9,6 @@ Object.assign module.exports, { unstable: {
   ( require './unstable-benchmark-brics'        )...,
   ( require './unstable-fast-linereader-brics'  )...,
   ( require './unstable-getrandom-brics'        )...,
-  ( require './unstable-callsite-brics'     )...,
+  ( require './unstable-callsite-brics'         )...,
   }, }
 
