@@ -10,5 +10,6 @@ Object.assign module.exports, { unstable: {
   ( require './unstable-fast-linereader-brics'  )...,
   ( require './unstable-getrandom-brics'        )...,
   ( require './unstable-callsite-brics'         )...,
+  ( require './unstable-dbric-brics'            )...,
   }, }
 
