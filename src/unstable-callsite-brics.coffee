@@ -34,7 +34,9 @@ UNSTABLE_CALLSITE_BRICS =
           throw error unless error.code is 'MODULE_NOT_FOUND'
         path = PATH.dirname path
       #.......................................................................................................
-      return { path, package_path, package_json, }
+      { name,
+        version,  } = package_json
+      return { name, version, path, package_path, package_json, }
 
     #---------------------------------------------------------------------------------------------------------
     get_callsite = ({ delta = 1 }={}) ->
@@ -46,12 +48,28 @@ UNSTABLE_CALLSITE_BRICS =
     get_callsite_path = ({ delta = 1 }={}) ->
       callsite = get_callsite { delta: delta + 1, }
       unless callsite.scriptName.startsWith 'file://'
-        throw new Error "Ω___5 unable to get path for callsite.scriptName: #{callsite.scriptName}"
+        throw new Error "Ω___1 unable to get path for callsite.scriptName: #{callsite.scriptName}"
       return URL.fileURLToPath callsite.scriptName
+
+    #---------------------------------------------------------------------------------------------------------
+    require_from_app_folder = ({ delta = 1, path, }={}) ->
+      unless ( typeof path ) is 'string'
+        throw new Error "Ω___2 expected path to be a text, got #{path}"
+      details = get_app_details { delta: delta + 1, }
+      abspath = PATH.resolve PATH.join details.path, path
+      return require abspath
+
+    #---------------------------------------------------------------------------------------------------------
+    require_bricabrac_cfg = ({ delta = 1, }={}) ->
+      return require_from_app_folder { delta: delta + 1, path: 'bricabrac.cfg.js', }
 
     #=========================================================================================================
     internals = Object.freeze internals
-    return exports = { get_callsite, get_callsite_path, get_app_details, internals, }
+    return exports = {
+      get_callsite, get_callsite_path,
+      get_app_details,
+      require_from_app_folder, require_bricabrac_cfg,
+      internals, }
 
 
 #===========================================================================================================
