@@ -14,6 +14,11 @@ UNSTABLE_BENCHMARK_BRICS =
     bigint_from_hrtime  = ([ s, ns, ])  -> ( BigInt s ) * 1_000_000_000n + ( BigInt ns )
     hrtime_as_bigint    =               -> bigint_from_hrtime process.hrtime()
     inf                 = new Intl.NumberFormat 'en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3}
+    A = ANSI_constants  =
+      cr:   '\x1b[1G'       # Carriage Return; move to first column (CHA n — Cursor Horizontal Absolut)
+      el0:  '\x1b[0K'       # EL Erase in Line; 0: from cursor to end
+      el1:  '\x1b[1K'       # EL Erase in Line; 1: from cursor to beginning
+      el2:  '\x1b[2K'       # EL Erase in Line; 2: entire line
 
     #---------------------------------------------------------------------------------------------------------
     get_progress = ({ total, name_rpr, }={}) ->
@@ -24,13 +29,10 @@ UNSTABLE_BENCHMARK_BRICS =
       divisor   = Math.round total / 100
       #.......................................................................................................
       return progress = ({ delta = 1, }={}) ->
-        processed += delta
-        return unless ( processed %% divisor ) is 0
+        processed      += delta; return null unless ( processed %% divisor ) is 0
         percentage      = Math.round processed / total * 100
         percentage_rpr  = percentage.toString().padStart 3
-        # console.log "Ω___4 total: #{total}, processed: #{processed}, percentage: #{percentage}"
-        cr = "\x1b[1G"       # Carriage Return; move to first column
-        process.stdout.write "#{name_rpr} #{get_percentage_bar percentage} #{cr}"
+        process.stdout.write "#{name_rpr} #{get_percentage_bar percentage} #{A.cr}"
         return null
 
     #---------------------------------------------------------------------------------------------------------
@@ -52,7 +54,7 @@ UNSTABLE_BENCHMARK_BRICS =
       # roundingMode: 'halfExpand', roundingPriority: 'auto', trailingZeroDisplay: 'auto' }
       dt_rpr        = inf.format dt
       dt_rpr        = dt_rpr.padStart 20, ' '
-      console.log "#{name_rpr} #{dt_rpr}".padEnd 100
+      console.log "#{A.el2}#{name_rpr} #{dt_rpr}"
       return result
 
     #.........................................................................................................

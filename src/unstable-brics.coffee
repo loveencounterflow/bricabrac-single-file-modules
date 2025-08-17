@@ -92,31 +92,13 @@ BRICS =
   require_progress_indicators: ->
     { ansi_colors_and_effects: C, } = ( require './ansi-brics' ).require_ansi_colors_and_effects()
     fg  = C.green
-    bg  = C.bg_black
+    bg  = C.bg_red
     fg0 = C.default
     bg0 = C.bg_default
 
     #-----------------------------------------------------------------------------------------------------------
     get_percentage_bar = ( percentage ) ->
-      ###
-
-      🮂🮃🮄🮅🮆
-      ▁▂▃▄▅▆▇█
-
-      ▉▊▋▌▍▎▏🮇🮈🮉🮊🮋
-
-      ▐
-
-      🭰 🭱 🭲 🭳 🭴 🭵
-
-      🮀 🮁
-
-      🭶 🭷 🭸 🭹 🭺 🭻
-
-      🭽 🭾
-      🭼 🭿
-
-      ###
+      ### 🮂🮃🮄🮅🮆 ▁▂▃▄▅▆▇█ ▉▊▋▌▍▎▏🮇🮈🮉🮊🮋 ▐ 🭰 🭱 🭲 🭳 🭴 🭵 🮀 🮁 🭶 🭷 🭸 🭹 🭺 🭻 🭽 🭾 🭼 🭿 ###
       percentage_rpr  = ( Math.round percentage ).toString().padStart 3
       if percentage is null or percentage <= 0  then return "#{percentage_rpr} %▕             ▏"
       if percentage >= 100                      then return "#{percentage_rpr} %▕█████████████▏"
