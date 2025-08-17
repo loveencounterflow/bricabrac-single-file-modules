@@ -15,9 +15,10 @@ UNSTABLE_CALLSITE_BRICS =
     UTIL        = require 'node:util'
     URL         = require 'node:url'
     { debug,  } = console
+    misfit      = Symbol 'misfit'
 
     #---------------------------------------------------------------------------------------------------------
-    internals = Object.freeze {}
+    internals = Object.freeze { misfit, }
 
     #---------------------------------------------------------------------------------------------------------
     get_app_details = ({ delta = 1 }={}) ->
@@ -48,24 +49,39 @@ UNSTABLE_CALLSITE_BRICS =
     get_callsite_path = ({ delta = 1 }={}) ->
       callsite = get_callsite { delta: delta + 1, }
       unless callsite.scriptName.startsWith 'file://'
-        throw new Error "Ω___2 unable to get path for callsite.scriptName: #{callsite.scriptName}"
+        throw new Error "Ω___1 unable to get path for callsite.scriptName: #{callsite.scriptName}"
       try
         return URL.fileURLToPath callsite.scriptName
       catch error
-        throw new Error "Ω___1 when trying to resolve file URL #{callsite.scriptName}, an error was thrown", \
+        throw new Error "Ω___2 when trying to resolve file URL #{callsite.scriptName}, an error was thrown", \
           { cause: error, }
 
     #---------------------------------------------------------------------------------------------------------
     require_from_app_folder = ({ delta = 1, path, }={}) ->
       unless ( typeof path ) is 'string'
         throw new Error "Ω___3 expected path to be a text, got #{path}"
-      details = get_app_details { delta: delta + 1, }
-      abspath = PATH.resolve PATH.join details.path, path
+      app     = get_app_details { delta: delta + 1, }
+      abspath = PATH.resolve PATH.join app.path, path
       return require abspath
 
     #---------------------------------------------------------------------------------------------------------
-    require_bricabrac_cfg = ({ delta = 1, }={}) ->
-      return require_from_app_folder { delta: delta + 1, path: 'bricabrac.cfg.js', }
+    require_bricabrac_cfg = ({ delta = 1, path = 'bricabrac.cfg.js', fallback = misfit, }={}) ->
+      app     = get_app_details { delta: delta + 1, }
+      abspath = PATH.resolve PATH.join app.path, path
+      try
+        R = require abspath
+      catch error
+        throw error unless error.code is 'MODULE_NOT_FOUND'
+        throw error if fallback is misfit
+        return fallback
+      R = { app, R..., }
+      #.......................................................................................................
+      ### TAINT use proper templates for default values ###
+      if R.datastore?
+        R.datastore.filename  = "#{R.datastore.name}.sqlite"
+        R.datastore.path      = PATH.resolve PATH.join app.path, R.datastore.filename
+      #.......................................................................................................
+      return R
 
     #=========================================================================================================
     internals = Object.freeze internals
