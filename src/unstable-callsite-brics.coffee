@@ -39,22 +39,26 @@ UNSTABLE_CALLSITE_BRICS =
       return { name, version, path, package_path, package_json, }
 
     #---------------------------------------------------------------------------------------------------------
-    get_callsite = ({ delta = 1 }={}) ->
+    get_callsite = ({ delta = 1, sourcemapped = true, }={}) ->
       frame_count = if delta < 10 then 10 else 200
-      callsites   = UTIL.getCallSites 200
+      callsites   = UTIL.getCallSites frame_count, { sourceMap: sourcemapped, }
       return callsites[ delta ]
 
     #---------------------------------------------------------------------------------------------------------
     get_callsite_path = ({ delta = 1 }={}) ->
       callsite = get_callsite { delta: delta + 1, }
       unless callsite.scriptName.startsWith 'file://'
-        throw new Error "Ω___1 unable to get path for callsite.scriptName: #{callsite.scriptName}"
-      return URL.fileURLToPath callsite.scriptName
+        throw new Error "Ω___2 unable to get path for callsite.scriptName: #{callsite.scriptName}"
+      try
+        return URL.fileURLToPath callsite.scriptName
+      catch error
+        throw new Error "Ω___1 when trying to resolve file URL #{callsite.scriptName}, an error was thrown", \
+          { cause: error, }
 
     #---------------------------------------------------------------------------------------------------------
     require_from_app_folder = ({ delta = 1, path, }={}) ->
       unless ( typeof path ) is 'string'
-        throw new Error "Ω___2 expected path to be a text, got #{path}"
+        throw new Error "Ω___3 expected path to be a text, got #{path}"
       details = get_app_details { delta: delta + 1, }
       abspath = PATH.resolve PATH.join details.path, path
       return require abspath
