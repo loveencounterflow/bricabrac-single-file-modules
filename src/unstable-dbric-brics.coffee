@@ -32,11 +32,20 @@ UNSTABLE_DBRIC_BRICS =
 
       #---------------------------------------------------------------------------------------------------------
       @functions:   {}
-      @statements:  {}
+      @statements:
+        std_get_schema: SQL"""
+          select * from sqlite_schema order by name, type;"""
+        std_get_tables: SQL"""
+          select * from sqlite_schema where type is 'table' order by name, type;"""
+        std_get_views: SQL"""
+          select * from sqlite_schema where type is 'view' order by name, type;"""
+        std_get_relations: SQL"""
+          select * from sqlite_schema where type in ( 'table', 'view' ) order by name, type;"""
 
       #---------------------------------------------------------------------------------------------------------
       @open: ( db_path ) ->
         R = new @ db_path
+        R._procure_db_objects()
         R._prepare_statements()
         return R
 
@@ -60,6 +69,18 @@ UNSTABLE_DBRIC_BRICS =
         return undefined
 
       #---------------------------------------------------------------------------------------------------------
+      _get_db_objects: ->
+        R = {}
+        for dbo from ( @db.prepare @constructor.statements.std_get_schema ).iterate()
+          R[ dbo.name ] = { type: dbo.type, }
+        return R
+
+      #---------------------------------------------------------------------------------------------------------
+      _procure_db_objects: ->
+
+        return null
+
+      #---------------------------------------------------------------------------------------------------------
       _prepare_statements: ->
         # #.......................................................................................................
         # for name, sql of clasz.statements
@@ -75,10 +96,14 @@ UNSTABLE_DBRIC_BRICS =
         @statements[ name ] = @prepare statement for name, statement of @constructor.statements
         return null
 
-      #---------------------------------------------------------------------------------------------------------
-      execute: ( sql ) -> @db.exec sql
+      #---------------------------------------------------------------------------------------------------
+      is_ready: ->
+        # dbos = @_get_db_objects()
+        # return false unless dbos.store_facets?.type is 'table'
+        return true
 
       #---------------------------------------------------------------------------------------------------------
+      execute: ( sql ) -> @db.exec    sql
       prepare: ( sql ) -> @db.prepare sql
 
 
