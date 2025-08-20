@@ -77,6 +77,12 @@
     given and return a function that in turn will produce random values according to the specs indicated by
     the arguments.
 
+##### References
+
+* [Proposal to add `new Random.Seeded()` to
+  JS](https://github.com/tc39/proposal-seeded-random?tab=readme-ov-file)
+
+##### To Do
 
 * **`[—]`** implement a 'raw codepoint' convenience method?
 * **`[—]`** adapt `Get_random::float()`, `Get_random::integer()` to match `Get_random::chr()`,

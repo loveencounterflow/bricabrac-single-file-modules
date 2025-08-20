@@ -31,6 +31,8 @@ UNSTABLE_DBRIC_BRICS =
     class Dbric
 
       #---------------------------------------------------------------------------------------------------------
+      @cfg: Object.freeze
+        prefix: 'std'
       @functions:   {}
       @statements:
         std_get_schema: SQL"""
@@ -41,6 +43,18 @@ UNSTABLE_DBRIC_BRICS =
           select * from sqlite_schema where type is 'view' order by name, type;"""
         std_get_relations: SQL"""
           select * from sqlite_schema where type in ( 'table', 'view' ) order by name, type;"""
+        #.......................................................................................................
+        std_procure: [
+          SQL"""create view std_tables as
+            select * from sqlite_schema
+              where type is 'table' order by name, type;"""
+          SQL"""create view std_views as
+            select * from sqlite_schema
+              where type is 'view' order by name, type;"""
+          SQL"""create view std_relations as
+            select * from sqlite_schema
+              where type in ( 'table', 'view' ) order by name, type;"""
+          ]
 
       #---------------------------------------------------------------------------------------------------------
       @open: ( db_path ) ->
@@ -53,6 +67,7 @@ UNSTABLE_DBRIC_BRICS =
       constructor: ( db_path ) ->
         @db                 = new SQLITE.DatabaseSync db_path
         clasz               = @constructor
+        @cfg                = Object.freeze { clasz.cfg..., db_path, }
         ### NOTE we can't just prepare all the stetments as they depend on DB objects existing or not existing,
         as the case may be. Hence we prepare statements on-demand and cache them here as needed: ###
         @statements         = {}
@@ -72,13 +87,41 @@ UNSTABLE_DBRIC_BRICS =
       _get_db_objects: ->
         R = {}
         for dbo from ( @db.prepare @constructor.statements.std_get_schema ).iterate()
-          R[ dbo.name ] = { type: dbo.type, }
+          R[ dbo.name ] = { name: dbo.name, type: dbo.type, }
         return R
 
       #---------------------------------------------------------------------------------------------------------
-      _procure_db_objects: ->
+      procure: null
 
+      #---------------------------------------------------------------------------------------------------------
+      _procure_db_objects: ->
+        return null if @is_ready
+        clasz             = @constructor
+        debug 'Ω___1', "not ready"
+        debug 'Ω___2', "procure method:               ", @procure
+        debug 'Ω___3', "_name_of_procure_statements:  ", @_name_of_procure_statements
+        debug 'Ω___4', "_procure_statements:          ", @_procure_statements
+        unless ( procure_statements = @_procure_statements )?
+          throw new Error "Ω___5 missing procure statement #{@_name_of_procure_statements}"
+        ### TAINT use proper validation ###
+        unless Array.isArray procure_statements
+          throw new Error "Ω___6 expected a list for @#{@_name_of_procure_statements}, got #{procure_statements}"
+        for procure_statement in procure_statements
+          debug 'Ω___7', "procure statement:", procure_statement
+          ( @prepare procure_statement ).run()
         return null
+
+      #---------------------------------------------------------------------------------------------------
+      set_getter @::, '_name_of_procure_statements', -> "#{@cfg.prefix}_procure"
+      set_getter @::, '_procure_statements',         -> @constructor.statements[ @_name_of_procure_statements ]
+
+      #---------------------------------------------------------------------------------------------------
+      set_getter @::, 'is_ready', ->
+        db_objects = @_get_db_objects()
+        return false unless db_objects.std_tables?.type     is 'view'
+        return false unless db_objects.std_views?.type      is 'view'
+        return false unless db_objects.std_relations?.type  is 'view'
+        return true
 
       #---------------------------------------------------------------------------------------------------------
       _prepare_statements: ->
@@ -90,10 +133,13 @@ UNSTABLE_DBRIC_BRICS =
         #     when name.startsWith 'insert_'
         #       null
         #     else
-        #       throw new Error "Ωnql___2 unable to parse statement name #{rpr name}"
+        #       throw new Error "Ωnql___8 unable to parse statement name #{rpr name}"
         # #   @[ name ] = @prepare sql
         hide @, 'statements', {}
-        @statements[ name ] = @prepare statement for name, statement of @constructor.statements
+        procure_statement_name  = @_name_of_procure_statements
+        for name, statement of @constructor.statements
+          continue if name is procure_statement_name
+          @statements[ name ] = @prepare statement
         return null
 
       #---------------------------------------------------------------------------------------------------
@@ -104,8 +150,15 @@ UNSTABLE_DBRIC_BRICS =
 
       #---------------------------------------------------------------------------------------------------------
       execute: ( sql ) -> @db.exec    sql
-      prepare: ( sql ) -> @db.prepare sql
 
+      #---------------------------------------------------------------------------------------------------------
+      prepare: ( sql ) ->
+        try
+          R = @db.prepare sql
+        catch cause
+          ### TAINT `rpr()` urgently needed ###
+          throw new Error "Ω___5 when trying to prepare the following statement, an error was thrown: #{sql}", { cause, }
+        return R
 
     #===========================================================================================================
     class Segment_width_db extends Dbric
