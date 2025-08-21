@@ -21,6 +21,50 @@ UNSTABLE_DBRIC_BRICS =
     #-------------------------------------------------------------------------------------------------------
     internals = {}
 
+
+    #===========================================================================================================
+    class Esql
+
+      #---------------------------------------------------------------------------------------------------------
+      I: ( name ) => '"' + ( name.replace /"/g, '""' ) + '"'
+
+      # #---------------------------------------------------------------------------------------------------------
+      # L: ( x ) =>
+      #   return 'null' unless x?
+      #   switch type = type_of x
+      #     when 'text'       then return  "'" + ( x.replace /'/g, "''" ) + "'"
+      #     # when 'list'       then return "'#{@list_as_json x}'"
+      #     when 'float'      then return x.toString()
+      #     when 'boolean'    then return ( if x then '1' else '0' )
+      #     # when 'list'       then throw new Error "^dba@23^ use `X()` for lists"
+      #   throw new E.DBay_sql_value_error '^dbay/sql@1^', type, x
+
+      # #---------------------------------------------------------------------------------------------------------
+      # V: ( x ) =>
+      #   throw new E.DBay_sql_not_a_list_error '^dbay/sql@2^', type, x unless ( type = type_of x ) is 'list'
+      #   return '( ' + ( ( @L e for e in x ).join ', ' ) + ' )'
+
+      # #---------------------------------------------------------------------------------------------------------
+      # interpolate: ( sql, values ) =>
+      #   idx = -1
+      #   return sql.replace @_interpolation_pattern, ( $0, opener, format, name ) =>
+      #     idx++
+      #     switch opener
+      #       when '$'
+      #         validate.nonempty_text name
+      #         key = name
+      #       when '?'
+      #         key = idx
+      #     value = values[ key ]
+      #     switch format
+      #       when '', 'I'  then return @I value
+      #       when 'L'      then return @L value
+      #       when 'V'      then return @V value
+      #     throw new E.DBay_interpolation_format_unknown '^dbay/sql@3^', format
+      # _interpolation_pattern: /(?<opener>[$?])(?<format>.?):(?<name>\w*)/g
+    #-------------------------------------------------------------------------------------------------------
+    esql = new Esql()
+
     #-------------------------------------------------------------------------------------------------------
     SQL = ( parts, expressions... ) ->
       R = parts[ 0 ]
@@ -34,9 +78,10 @@ UNSTABLE_DBRIC_BRICS =
 
       #-----------------------------------------------------------------------------------------------------
       @cfg: Object.freeze
-        prefix: 'NOPREFIX'
+        prefix: '(NOPREFIX)'
       @functions:   {}
-      @statements:  { build: [], }
+      @statements:  {}
+      @build:       null
 
       #-----------------------------------------------------------------------------------------------------
       @open: ( db_path ) ->
@@ -69,38 +114,61 @@ UNSTABLE_DBRIC_BRICS =
       #-----------------------------------------------------------------------------------------------------
       _get_db_objects: ->
         R = {}
-        for dbo from ( @db.prepare @constructor.statements.std_get_schema ).iterate()
+        for dbo from ( @db.prepare SQL"select name, type from sqlite_schema" ).iterate()
           R[ dbo.name ] = { name: dbo.name, type: dbo.type, }
         return R
 
       #-----------------------------------------------------------------------------------------------------
       teardown: ->
+        count       = 0
+        full_prefix = @full_prefix
+        ( @prepare SQL"pragma foreign_keys = off;" ).run()
+        for _, { name, type, } of @_get_db_objects()
+          continue unless name.startsWith full_prefix
+          count++
+          ( @prepare SQL"drop #{type} #{esql.I name};" ).run()
+        ( @prepare SQL"pragma foreign_keys = on;" ).run()
+        return count
 
       #-----------------------------------------------------------------------------------------------------
       build: -> if @is_ready then 0 else @rebuild()
 
       #-----------------------------------------------------------------------------------------------------
       rebuild: ->
-        R     = -1
-        clasz = @constructor
-        #...................................................................................................
-        return -1 unless ( build_statements = clasz.statements?.build )?
+        clasz         = @constructor
+        type_of_build = type_of clasz.build
         #...................................................................................................
         ### TAINT use proper validation ###
-        unless Array.isArray build_statements
-          throw new Error "Ω___4 expected a list for #{clasz.name}::statements.build, got #{build_statements}"
+        unless type_of_build in [ 'undefined', 'null', 'list', ]
+          throw new Error "Ω___5 expected an optional list for #{clasz.name}.build, got a #{type_of_build}"
+        #...................................................................................................
+        return -1 if ( not clasz.build? )
+        return  0 if ( clasz.build.length is 0 )
         #...................................................................................................
         @teardown()
-        #...................................................................................................
         count = 0
-        for build_statement in build_statements
+        #...................................................................................................
+        for build_statement in clasz.build
           count++
-          debug 'Ω___5', "build statement:", build_statement
+          # debug 'Ω___6', "build statement:", build_statement
           ( @prepare build_statement ).run()
         return count
 
       #---------------------------------------------------------------------------------------------------
-      set_getter @::, 'is_ready', -> @_get_is_ready()
+      set_getter @::, 'is_ready',     -> @_get_is_ready()
+
+      #---------------------------------------------------------------------------------------------------
+      set_getter @::, 'prefix',       ->
+        return @constructor.name.replace /^.*_([^_]+)$/, '$1' unless @cfg.prefix?
+        return '' if @cfg.prefix is '(NOPREFIX)'
+        return @cfg.prefix
+
+      #---------------------------------------------------------------------------------------------------
+      set_getter @::, 'full_prefix',  ->
+        return '' if ( not @cfg.prefix? )
+        return '' if @cfg.prefix is '(NOPREFIX)'
+        return '' if @cfg.prefix is ''
+        return "#{@cfg.prefix}_"
 
       #---------------------------------------------------------------------------------------------------
       _get_is_ready: -> true
@@ -115,12 +183,14 @@ UNSTABLE_DBRIC_BRICS =
         #     when name.startsWith 'insert_'
         #       null
         #     else
-        #       throw new Error "Ωnql___6 unable to parse statement name #{rpr name}"
+        #       throw new Error "Ωnql___7 unable to parse statement name #{rpr name}"
         # #   @[ name ] = @prepare sql
         hide @, 'statements', {}
         build_statement_name  = @_name_of_build_statements
         for name, statement of @constructor.statements
-          continue if name is build_statement_name
+          # if ( type_of statement ) is 'list'
+          #   @statements[ name ] = ( @prepare sub_statement for sub_statement in statement )
+          #   continue
           @statements[ name ] = @prepare statement
         return null
 
@@ -139,7 +209,7 @@ UNSTABLE_DBRIC_BRICS =
           R = @db.prepare sql
         catch cause
           ### TAINT `rpr()` urgently needed ###
-          throw new Error "Ω___7 when trying to prepare the following statement, an error was thrown: #{rpr sql}", { cause, }
+          throw new Error "Ω___8 when trying to prepare the following statement, an error was thrown: #{rpr sql}", { cause, }
         return R
 
     #=======================================================================================================
@@ -148,7 +218,11 @@ UNSTABLE_DBRIC_BRICS =
       #-----------------------------------------------------------------------------------------------------
       @cfg: Object.freeze
         prefix: 'std'
+
+      #-----------------------------------------------------------------------------------------------------
       @functions:   {}
+
+      #-----------------------------------------------------------------------------------------------------
       @statements:
         std_get_schema: SQL"""
           select * from sqlite_schema order by name, type;"""
@@ -158,18 +232,19 @@ UNSTABLE_DBRIC_BRICS =
           select * from sqlite_schema where type is 'view' order by name, type;"""
         std_get_relations: SQL"""
           select * from sqlite_schema where type in ( 'table', 'view' ) order by name, type;"""
-        #...................................................................................................
-        std_build: [
-          SQL"""create view std_tables as
-            select * from sqlite_schema
-              where type is 'table' order by name, type;"""
-          SQL"""create view std_views as
-            select * from sqlite_schema
-              where type is 'view' order by name, type;"""
-          SQL"""create view std_relations as
-            select * from sqlite_schema
-              where type in ( 'table', 'view' ) order by name, type;"""
-          ]
+
+      #-----------------------------------------------------------------------------------------------------
+      @build: [
+        SQL"""create view std_tables as
+          select * from sqlite_schema
+            where type is 'table' order by name, type;"""
+        SQL"""create view std_views as
+          select * from sqlite_schema
+            where type is 'view' order by name, type;"""
+        SQL"""create view std_relations as
+          select * from sqlite_schema
+            where type in ( 'table', 'view' ) order by name, type;"""
+        ]
 
       #---------------------------------------------------------------------------------------------------
       _get_is_ready: ->
@@ -238,6 +313,8 @@ UNSTABLE_DBRIC_BRICS =
     internals = Object.freeze { internals..., Segment_width_db, }
     return exports = {
       Dbric,
+      Dbric_std,
+      esql,
       SQL,
       internals, }
 
