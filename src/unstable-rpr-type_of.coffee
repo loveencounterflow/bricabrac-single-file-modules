@@ -9,39 +9,26 @@ BRICS =
 
   #=========================================================================================================
   ### NOTE Future Single-File Module ###
-  require_dbric: ->
+  require_show: ->
 
     #=======================================================================================================
     write                     = ( p ) -> process.stdout.write p
-    TMPTRM                    = GUY.trm
-    C                         = require 'ansis'
+    C                         = require '/home/flow/jzr/hengist-NG/node_modules/.pnpm/ansis@4.1.0/node_modules/ansis/index.cjs'
     # { hide,
     #   set_getter,   } = ( require './main' ).require_managed_property_tools()
     # SQLITE            = require 'node:sqlite'
     # { debug,        } = console
 
-    #-------------------------------------------------------------------------------------------------------
-    internals = {}
-
-
-    #=======================================================================================================
-    class Dbric
-
-      #-----------------------------------------------------------------------------------------------------
-      constructor: ( db_path ) ->
-        return undefined
-
-
-
     #=======================================================================================================
     ### thx to https://github.com/sindresorhus/identifier-regex ###
     jsid_re   = ///^ [ $ _ \p{ID_Start} ] [ $ _ \u200C \u200D \p{ID_Continue} ]* $///v
     isa_jsid  = ( x ) -> ( ( typeof x ) is 'string' ) and jsid_re.test x
-
-
-    #=======================================================================================================
+    #-------------------------------------------------------------------------------------------------------
     templates =
       show: { indentation: null, }
+
+    #=======================================================================================================
+    internals = { jsid_re, isa_jsid, templates, }
 
     #=======================================================================================================
     class Show
@@ -350,7 +337,8 @@ BRICS =
     #=======================================================================================================
     internals = Object.freeze { internals..., }
     return exports = {
-      Dbric,
+      Show,
+      show,
       internals, }
 
 
@@ -394,11 +382,15 @@ type_of = ( x ) ->
 
 #===========================================================================================================
 demo_show = ->
+  { debug,
+    log: echo, } = console
+  { show,
+    Show, } = BRICS.require_show()
   debug 'Ω___3', show
   debug 'Ω___4', show.state
-  debug 'Ω___5', rpr show.dent
+  debug 'Ω___5', show show.dent
   debug 'Ω___6', show.go_down()
-  debug 'Ω___7', rpr show.dent
+  debug 'Ω___7', show show.dent
   echo()
   echo '————————————————————————————————————————————————————————————————'
   echo show v_1 = "foo 'bar'"
@@ -427,7 +419,7 @@ demo_show = ->
   echo()
   return null
 
-
+demo_show()
 
 
 
