@@ -1,5 +1,9 @@
 'use strict'
 
+{ debug,
+  log: echo, } = console
+
+
 ############################################################################################################
 #
 #===========================================================================================================
@@ -13,7 +17,10 @@ BRICS =
 
     #=======================================================================================================
     write                     = ( p ) -> process.stdout.write p
-    C                         = require '/home/flow/jzr/hengist-NG/node_modules/.pnpm/ansis@4.1.0/node_modules/ansis/index.cjs'
+    C                         = require '../../hengist-NG/node_modules/.pnpm/ansis@4.1.0/node_modules/ansis/index.cjs'
+    { type_of,
+      is_primitive_type,    } = BRICS.require_type_of()
+    { strip_ansi,           } = ( require './main' ).require_strip_ansi()
     # { hide,
     #   set_getter,   } = ( require './main' ).require_managed_property_tools()
     # SQLITE            = require 'node:sqlite'
@@ -25,7 +32,9 @@ BRICS =
     isa_jsid  = ( x ) -> ( ( typeof x ) is 'string' ) and jsid_re.test x
     #-------------------------------------------------------------------------------------------------------
     templates =
-      show: { indentation: null, }
+      show:
+        indentation:  null
+        colors:       true
 
     #=======================================================================================================
     internals = { jsid_re, isa_jsid, templates, }
@@ -36,10 +45,13 @@ BRICS =
       #-----------------------------------------------------------------------------------------------------
       constructor: ( cfg ) ->
         me = ( x ) =>
-          return ( text for text from @pen x ).join ''
+          R = ( text for text from @pen x ).join ''
+          ### TAINT avoid to add colors instead ###
+          R = strip_ansi R if @cfg.colors is false
+          return R
         Object.setPrototypeOf me, @
         @cfg    = { templates.show..., cfg..., }
-        @state  = { level: 0, ended_with_nl: false, }
+        @state  = { level: 0, ended_with_nl: false, seen: ( new Set() ), }
         @spacer = '\x20\x20'
         Object.defineProperty @, 'dent',
           get: => @spacer.repeat @state.level
@@ -47,12 +59,14 @@ BRICS =
 
       #-----------------------------------------------------------------------------------------------------
       pen: ( x ) ->
+        @state.seen.clear()
         for text from @dispatch x
           @state.ended_with_nl = text.endsWith '\n'
           yield text
         unless @state.ended_with_nl
           @state.ended_with_nl = true
           # yield '\n'
+        @state.seen.clear()
         return null
 
       #-----------------------------------------------------------------------------------------------------
@@ -69,10 +83,21 @@ BRICS =
 
       #-----------------------------------------------------------------------------------------------------
       dispatch: ( x ) ->
-        if ( method = @[ "show_#{type_of x}" ] )?
-          yield from method.call @, x
-        else
-          yield from @show_other x
+        type  = type_of x
+        omit  = false
+        if ( is_primitive_type type )
+          if @state.seen.has x
+            # debug '^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^', "seen", type
+            null
+            # omit = true
+            # yield '(CIRCULAR)'
+          else
+            @state.seen.add x
+        unless omit
+          if ( method = @[ "show_#{type}" ] )?
+            yield from method.call @, x
+          else
+            yield from @show_other x
         return null
 
       #-----------------------------------------------------------------------------------------------------
@@ -114,12 +139,14 @@ BRICS =
 
       #-----------------------------------------------------------------------------------------------------
       show_list: ( x ) ->
-        yield colors.list '['
+        R = ''
+        R += colors.list '['
         for element in x
           ### TAINT code duplication ###
           for text from @dispatch element
-            yield ' ' + text + ( colors.list ',' )
-        yield colors.list if ( x.length is 0 ) then ']' else ' ]'
+            R += ' ' + text + ( colors.list ',' )
+        R += colors.list if ( x.length is 0 ) then ']' else ' ]'
+        yield R
         return null
 
       #-----------------------------------------------------------------------------------------------------
@@ -331,59 +358,88 @@ BRICS =
       other:      ( x ) -> COLOR.inverse.red                      x
 
     #=======================================================================================================
-    show = new Show()
-
+    show            = new Show()
+    show_no_colors  = new Show { colors: false, }
 
     #=======================================================================================================
     internals = Object.freeze { internals..., }
     return exports = {
       Show,
       show,
+      show_no_colors,
       internals, }
 
+
+  #=========================================================================================================
+  ### NOTE Future Single-File Module ###
+  require_type_of: ->
+
+    #=======================================================================================================
+    object_prototype  = Object.getPrototypeOf {}
+    pod_prototypes    = Object.freeze [ null, object_prototype, ]
+
+    #-----------------------------------------------------------------------------------------------------------
+    primitive_types     = Object.freeze [
+      'null', 'undefined',
+      'boolean',
+      'infinity', 'nan', 'float',
+      'text', 'symbol', 'regex',
+      ]
+
+    #=======================================================================================================
+    internals         = { object_prototype, pod_prototypes, primitive_types, }
+
+    #-----------------------------------------------------------------------------------------------------------
+    type_of = ( x ) ->
+      #.........................................................................................................
+      ### Primitives: ###
+      return 'null'         if x is null
+      return 'undefined'    if x is undefined
+      return 'infinity'     if ( x is +Infinity ) or ( x is -Infinity )
+      return 'boolean'      if ( x is true ) or ( x is false )
+      # return 'true'         if ( x is true )
+      # return 'false'        if ( x is false )
+      return 'nan'          if Number.isNaN     x
+      return 'float'        if Number.isFinite  x
+      # return 'unset'        if x is unset
+      return 'pod'          if ( Object.getPrototypeOf x ) in pod_prototypes
+      #.........................................................................................................
+      switch jstypeof = typeof x
+        when 'string'                       then return 'text'
+        when 'symbol'                       then return 'symbol'
+      #.........................................................................................................
+      return 'list'         if Array.isArray  x
+      ### TAINT consider to return x.constructor.name ###
+      switch millertype = ( ( Object::toString.call x ).replace /^\[object ([^\]]+)\]$/, '$1' ).toLowerCase()
+        when 'regexp'                       then return 'regex'
+      return millertype
+      # switch millertype = Object::toString.call x
+      #   when '[object Function]'            then return 'function'
+      #   when '[object AsyncFunction]'       then return 'asyncfunction'
+      #   when '[object GeneratorFunction]'   then return 'generatorfunction'
+
+    #-----------------------------------------------------------------------------------------------------------
+    is_primitive      = ( x     ) -> ( type_of x )  in primitive_types
+    is_primitive_type = ( type  ) -> type           in primitive_types
+
+    #=======================================================================================================
+    internals = Object.freeze { internals..., }
+    return exports = {
+      type_of,
+      is_primitive,
+      is_primitive_type,
+      internals, }
 
 #===========================================================================================================
 Object.assign module.exports, BRICS
 
 
 
-#-----------------------------------------------------------------------------------------------------------
-object_prototype  = Object.getPrototypeOf {}
-pod_prototypes    = [ null, object_prototype, ]
-
-#-----------------------------------------------------------------------------------------------------------
-type_of = ( x ) ->
-  #.........................................................................................................
-  ### Primitives: ###
-  return 'null'         if x is null
-  return 'undefined'    if x is undefined
-  return 'infinity'     if ( x is +Infinity ) or ( x is -Infinity )
-  # return 'boolean'      if ( x is true ) or ( x is false )
-  return 'true'         if ( x is true )
-  return 'false'        if ( x is false )
-  return 'nan'          if Number.isNaN     x
-  return 'float'        if Number.isFinite  x
-  # return 'unset'        if x is unset
-  return 'pod'          if ( Object.getPrototypeOf x ) in pod_prototypes
-  #.........................................................................................................
-  switch jstypeof = typeof x
-    when 'string'                       then return 'text'
-    when 'symbol'                       then return 'symbol'
-  #.........................................................................................................
-  return 'list'         if Array.isArray  x
-  ### TAINT consider to return x.constructor.name ###
-  switch millertype = ( ( Object::toString.call x ).replace /^\[object ([^\]]+)\]$/, '$1' ).toLowerCase()
-    when 'regexp'                       then return 'regex'
-  return millertype
-  # switch millertype = Object::toString.call x
-  #   when '[object Function]'            then return 'function'
-  #   when '[object AsyncFunction]'       then return 'asyncfunction'
-  #   when '[object GeneratorFunction]'   then return 'generatorfunction'
 
 #===========================================================================================================
 demo_show = ->
-  { debug,
-    log: echo, } = console
+  GUY                       = require '../../guy'
+  { rpr, } = GUY.trm
   { show,
     Show, } = BRICS.require_show()
   debug 'Ω___3', show
@@ -415,11 +471,29 @@ demo_show = ->
   v_10.v_10 = v_10
   echo '————————————————————————————————————————————————————————————————'
   # echo show v_10 = { v_1, v_2, v_3, v_4, v_5, v_6, v_7, v_8, v_9, v_10, } # v_10, v_11, v_12, v_13, v_14, }
+  echo rpr v_10
+  echo '————————————————————————————————————————————————————————————————'
+  a = [ 'a', ]
+  b = [ 'b', a, ]
+  echo rpr  b
+  echo show b
+  echo '————————————————————————————————————————————————————————————————'
+  b.push a
+  echo rpr  b
+  echo show b
+  echo '————————————————————————————————————————————————————————————————'
+  d = {}
+  c = { d, }
+  d.c = c
+  e = { d, c, }
+  echo rpr c
+  echo rpr e
+  # echo show b
   echo '————————————————————————————————————————————————————————————————'
   echo()
   return null
 
-demo_show()
+# demo_show()
 
 
 

@@ -12,9 +12,11 @@ UNSTABLE_DBRIC_BRICS =
 
     #=======================================================================================================
     { hide,
-      set_getter,   } = ( require './main' ).require_managed_property_tools()
-    SQLITE            = require 'node:sqlite'
-    { debug,        } = console
+      set_getter,           } = ( require './main' ).require_managed_property_tools()
+    { type_of,              } = ( require './main' ).unstable.require_type_of()
+    { show_no_colors: rpr,  } = ( require './main' ).unstable.require_show()
+    SQLITE                    = require 'node:sqlite'
+    { debug,                } = console
 
     #-------------------------------------------------------------------------------------------------------
     internals = {}
@@ -137,7 +139,7 @@ UNSTABLE_DBRIC_BRICS =
           R = @db.prepare sql
         catch cause
           ### TAINT `rpr()` urgently needed ###
-          throw new Error "Ω___7 when trying to prepare the following statement, an error was thrown: #{sql}", { cause, }
+          throw new Error "Ω___7 when trying to prepare the following statement, an error was thrown: #{rpr sql}", { cause, }
         return R
 
     #=======================================================================================================
