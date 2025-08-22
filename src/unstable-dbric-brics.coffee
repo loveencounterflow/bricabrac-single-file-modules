@@ -191,12 +191,12 @@ UNSTABLE_DBRIC_BRICS =
       #---------------------------------------------------------------------------------------------------
       _get_objects_in_build_statements: ->
         ### TAINT does not yet deal with quoted names ###
-        clasz         = @constructor
-        db_objects    = {}
-        statement_nr  = 0
-        error_count   = 0
+        clasz           = @constructor
+        db_objects      = {}
+        statement_count = 0
+        error_count     = 0
         for statement in clasz.build ? []
-          statement_nr++
+          statement_count++
           if ( match = statement.match create_statement_re )?
             { name,
               type, }           = match.groups
@@ -204,15 +204,16 @@ UNSTABLE_DBRIC_BRICS =
             db_objects[ name ]  = { name, type, }
           else
             error_count++
-            name                = "error_#{statement_nr}"
+            name                = "error_#{statement_count}"
             type                = 'error'
             message             = "non-conformant statement: #{rpr statement}"
             db_objects[ name ]  = { name, type, message, }
-        return { error_count, db_objects, }
+        return { error_count, statement_count, db_objects, }
 
       #-----------------------------------------------------------------------------------------------------
       _get_is_ready: ->
         { error_count,
+          statement_count,
           db_objects: expected_db_objects, } = @_get_objects_in_build_statements()
         #...................................................................................................
         if error_count isnt 0
@@ -220,7 +221,7 @@ UNSTABLE_DBRIC_BRICS =
           for name, { type, message, } of expected_db_objects
             continue unless type is 'error'
             messages.push message
-          throw new Error "Ω___5 one or more build statements could not be parsed: #{rpr messages}"
+          throw new Error "Ω___5 #{error_count} out of #{statement_count} build statement(s) could not be parsed: #{rpr messages}"
         #...................................................................................................
         present_db_objects = @_get_db_objects()
         for name, { type: expected_type, } of expected_db_objects
