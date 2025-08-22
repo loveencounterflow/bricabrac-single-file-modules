@@ -19,11 +19,29 @@ UNSTABLE_DBRIC_BRICS =
     { debug,                } = console
 
     #-------------------------------------------------------------------------------------------------------
-    internals = {}
+    create_statement_re = ///
+      ^ \s*
+      create \s+
+      (?<type> table | view | index ) \s+
+      (?<name> \S+ ) \s+
+      ///is
+
+    #-------------------------------------------------------------------------------------------------------
+    internals = { type_of, create_statement_re, }
 
 
     #===========================================================================================================
     class Esql
+
+      #---------------------------------------------------------------------------------------------------
+      unquote_name: ( name ) ->
+        ### TAINT use proper validation ###
+        unless ( type = type_of name ) is 'text'
+          throw new Error "Ω___1 expected a text, got a #{type}"
+        switch true
+          when /^[^"](.*)[^"]$/.test  name then return name
+          when /^"(.+)"$/.test        name then return name[ 1 ... name.length - 1 ].replace /""/g, '"'
+        throw new Error "Ω___2 expected a name, got #{rpr name}"
 
       #---------------------------------------------------------------------------------------------------------
       I: ( name ) => '"' + ( name.replace /"/g, '""' ) + '"'
@@ -140,7 +158,7 @@ UNSTABLE_DBRIC_BRICS =
         #...................................................................................................
         ### TAINT use proper validation ###
         unless type_of_build in [ 'undefined', 'null', 'list', ]
-          throw new Error "Ω___5 expected an optional list for #{clasz.name}.build, got a #{type_of_build}"
+          throw new Error "Ω___3 expected an optional list for #{clasz.name}.build, got a #{type_of_build}"
         #...................................................................................................
         return -1 if ( not clasz.build? )
         return  0 if ( clasz.build.length is 0 )
@@ -150,7 +168,7 @@ UNSTABLE_DBRIC_BRICS =
         #...................................................................................................
         for build_statement in clasz.build
           count++
-          # debug 'Ω___6', "build statement:", build_statement
+          # debug 'Ω___4', "build statement:", build_statement
           ( @prepare build_statement ).run()
         return count
 
@@ -171,7 +189,25 @@ UNSTABLE_DBRIC_BRICS =
         return "#{@cfg.prefix}_"
 
       #---------------------------------------------------------------------------------------------------
-      _get_is_ready: -> true
+      _get_objects_in_build_statements: ->
+        ### TAINT does not yet deal with quoted names ###
+        clasz = @constructor
+        R     = {}
+        for statement in clasz.build ? []
+          continue unless ( match = statement.match create_statement_re )?
+          { name,
+            type, } = match.groups
+          name      = esql.unquote_name name
+          R[ name ] = { name, type, }
+        return R
+
+      #---------------------------------------------------------------------------------------------------
+      _get_is_ready: ->
+        expected_db_objects = @_get_objects_in_build_statements()
+        present_db_objects  = @_get_db_objects()
+        for name, { type: expected_type, } of expected_db_objects
+          return false unless present_db_objects[ name ]?.type is expected_type
+        return true
 
       #-----------------------------------------------------------------------------------------------------
       _prepare_statements: ->
@@ -183,7 +219,7 @@ UNSTABLE_DBRIC_BRICS =
         #     when name.startsWith 'insert_'
         #       null
         #     else
-        #       throw new Error "Ωnql___7 unable to parse statement name #{rpr name}"
+        #       throw new Error "Ωnql___5 unable to parse statement name #{rpr name}"
         # #   @[ name ] = @prepare sql
         hide @, 'statements', {}
         build_statement_name  = @_name_of_build_statements
@@ -209,7 +245,7 @@ UNSTABLE_DBRIC_BRICS =
           R = @db.prepare sql
         catch cause
           ### TAINT `rpr()` urgently needed ###
-          throw new Error "Ω___8 when trying to prepare the following statement, an error was thrown: #{rpr sql}", { cause, }
+          throw new Error "Ω___6 when trying to prepare the following statement, an error was thrown: #{rpr sql}", { cause, }
         return R
 
     #=======================================================================================================
@@ -241,18 +277,11 @@ UNSTABLE_DBRIC_BRICS =
         SQL"""create view std_views as
           select * from sqlite_schema
             where type is 'view' order by name, type;"""
-        SQL"""create view std_relations as
+        SQL"""create view "std_relations" as
           select * from sqlite_schema
             where type in ( 'table', 'view' ) order by name, type;"""
         ]
 
-      #---------------------------------------------------------------------------------------------------
-      _get_is_ready: ->
-        db_objects = @_get_db_objects()
-        return false unless db_objects.std_tables?.type     is 'view'
-        return false unless db_objects.std_views?.type      is 'view'
-        return false unless db_objects.std_relations?.type  is 'view'
-        return true
 
     #=======================================================================================================
     class Segment_width_db extends Dbric
