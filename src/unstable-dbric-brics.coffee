@@ -191,20 +191,38 @@ UNSTABLE_DBRIC_BRICS =
       #---------------------------------------------------------------------------------------------------
       _get_objects_in_build_statements: ->
         ### TAINT does not yet deal with quoted names ###
-        clasz = @constructor
-        R     = {}
+        clasz         = @constructor
+        db_objects    = {}
+        statement_nr  = 0
+        error_count   = 0
         for statement in clasz.build ? []
-          continue unless ( match = statement.match create_statement_re )?
-          { name,
-            type, } = match.groups
-          name      = esql.unquote_name name
-          R[ name ] = { name, type, }
-        return R
+          statement_nr++
+          if ( match = statement.match create_statement_re )?
+            { name,
+              type, }           = match.groups
+            name                = esql.unquote_name name
+            db_objects[ name ]  = { name, type, }
+          else
+            error_count++
+            name                = "error_#{statement_nr}"
+            type                = 'error'
+            message             = "non-conformant statement: #{rpr statement}"
+            db_objects[ name ]  = { name, type, message, }
+        return { error_count, db_objects, }
 
-      #---------------------------------------------------------------------------------------------------
+      #-----------------------------------------------------------------------------------------------------
       _get_is_ready: ->
-        expected_db_objects = @_get_objects_in_build_statements()
-        present_db_objects  = @_get_db_objects()
+        { error_count,
+          db_objects: expected_db_objects, } = @_get_objects_in_build_statements()
+        #...................................................................................................
+        if error_count isnt 0
+          messages = []
+          for name, { type, message, } of expected_db_objects
+            continue unless type is 'error'
+            messages.push message
+          throw new Error "Ω___5 one or more build statements could not be parsed: #{rpr messages}"
+        #...................................................................................................
+        present_db_objects = @_get_db_objects()
         for name, { type: expected_type, } of expected_db_objects
           return false unless present_db_objects[ name ]?.type is expected_type
         return true
@@ -219,7 +237,7 @@ UNSTABLE_DBRIC_BRICS =
         #     when name.startsWith 'insert_'
         #       null
         #     else
-        #       throw new Error "Ωnql___5 unable to parse statement name #{rpr name}"
+        #       throw new Error "Ωnql___6 unable to parse statement name #{rpr name}"
         # #   @[ name ] = @prepare sql
         hide @, 'statements', {}
         build_statement_name  = @_name_of_build_statements
@@ -245,7 +263,7 @@ UNSTABLE_DBRIC_BRICS =
           R = @db.prepare sql
         catch cause
           ### TAINT `rpr()` urgently needed ###
-          throw new Error "Ω___6 when trying to prepare the following statement, an error was thrown: #{rpr sql}", { cause, }
+          throw new Error "Ω___7 when trying to prepare the following statement, an error was thrown: #{rpr sql}", { cause, }
         return R
 
     #=======================================================================================================
