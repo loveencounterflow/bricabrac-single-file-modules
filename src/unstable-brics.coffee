@@ -142,6 +142,7 @@ BRICS =
   ### NOTE Future Single-File Module ###
   require_format_stack: ->
     { ansi_colors_and_effects: C, } = ( require './ansi-brics' ).require_ansi_colors_and_effects()
+    { strip_ansi,                 } = ( require './ansi-brics' ).require_strip_ansi()
     { type_of,                    } = ( require './unstable-rpr-type_of-brics' ).require_type_of()
 
     #=======================================================================================================
@@ -163,6 +164,7 @@ BRICS =
     templates =
       format_stack:
         relative:       true # boolean to use CWD, or specify reference path
+        padding:        80
         color:          c
         format:
           # path:         ( text ) -> "#{C.white+C.bg_green}#{text}#{C.default+C.bg_default}"
@@ -237,7 +239,8 @@ BRICS =
         callee          = @cfg.format.callee        stack_info.callee
         line_nr         = @cfg.format.line_nr       stack_info.line_nr
         column_nr       = @cfg.format.column_nr     stack_info.column_nr
-        return folder_path + file_name + line_nr + column_nr + callee
+        padding         = ' '.repeat @cfg.padding - ( strip_ansi folder_path + file_name + line_nr + column_nr ).length
+        return folder_path + file_name + line_nr + column_nr + padding + callee
 
     #.......................................................................................................
     return exports = do =>
