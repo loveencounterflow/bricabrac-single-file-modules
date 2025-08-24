@@ -146,17 +146,34 @@ BRICS =
     { type_of,                    } = ( require './unstable-rpr-type_of-brics' ).require_type_of()
 
     #=======================================================================================================
-    main_c              = {}
-    main_c.reset        = C.default + C.bg_default  + C.bold0
-    main_c.folder_path  = C.black   + C.bg_silver   + C.bold
-    main_c.file_name    = C.wine    + C.bg_silver   + C.bold
-    main_c.line_nr      = C.black   + C.bg_blue     + C.bold
-    main_c.column_nr    = C.black   + C.bg_blue     + C.bold
-    main_c.callee       = C.black   + C.bg_yellow   + C.bold
+    main_c                    = {}
+    main_c.reset              = C.reset # C.default + C.bg_default  + C.bold0
+    main_c.folder_path        = C.black   + C.bg_silver   + C.bold
+    main_c.file_name          = C.wine    + C.bg_silver   + C.bold
+    main_c.line_nr            = C.black   + C.bg_blue     + C.bold
+    main_c.column_nr          = C.black   + C.bg_blue     + C.bold
+    main_c.callee             = C.black   + C.bg_yellow   + C.bold
     #.......................................................................................................
-    internal_c          = Object.create main_c
-    external_c          = Object.create main_c
-    dependency_c        = Object.create main_c
+    internal_c                = Object.create main_c
+    internal_c.folder_path    = C.gray    + C.bg_silver   + C.bold
+    internal_c.file_name      = C.gray    + C.bg_silver   + C.bold
+    internal_c.line_nr        = C.gray    + C.bg_silver   + C.bold
+    internal_c.column_nr      = C.gray    + C.bg_silver   + C.bold
+    internal_c.callee         = C.gray    + C.bg_silver   + C.bold
+    #.......................................................................................................
+    external_c                = Object.create main_c
+    # external_c.folder_path    = C.black   + C.bg_silver   + C.bold
+    # external_c.file_name      = C.wine    + C.bg_silver   + C.bold
+    # external_c.line_nr        = C.black   + C.bg_blue     + C.bold
+    # external_c.column_nr      = C.black   + C.bg_blue     + C.bold
+    external_c.callee         = C.black   + C.bg_lime   + C.bold
+    #.......................................................................................................
+    dependency_c              = Object.create main_c
+    # dependency_c.folder_path  = C.black   + C.bg_silver   + C.bold
+    # dependency_c.file_name    = C.wine    + C.bg_silver   + C.bold
+    # dependency_c.line_nr      = C.black   + C.bg_blue     + C.bold
+    # dependency_c.column_nr    = C.black   + C.bg_blue     + C.bold
+    dependency_c.callee       = C.black   + C.bg_orpiment   + C.bold
     #.......................................................................................................
     templates =
       format_stack:
@@ -222,8 +239,8 @@ BRICS =
         R.column_nr = parseInt R.column_nr, 10
         switch true
           when R.path.startsWith 'node:'                  then  R.type = 'internal'
-          when R.path.startsWith '../'                    then  R.type = 'external'
           when ( R.path.indexOf '/node_modules/' ) > -1   then  R.type = 'dependency'
+          when R.path.startsWith '../'                    then  R.type = 'external'
           else                                                  R.type = 'main'
         return R
 
