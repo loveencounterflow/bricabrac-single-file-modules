@@ -99,8 +99,10 @@ ANSI_BRICS =
       zinnia:           '#ff5005'
     #.........................................................................................................
     R =
-      overline1:          '\x1b[53m'
+      overline:           '\x1b[53m'
       overline0:          '\x1b[55m'
+      underline:          '\x1b[4m'
+      underline0:         '\x1b[24m'
       default:            '\x1b[39m'
       bg_default:         '\x1b[49m'
       bold:               '\x1b[1m'
@@ -210,7 +212,7 @@ ANSI_BRICS =
     ```
     own_single_ansi_re  = ///   (   \x1b \[ [^ \x40 - \x7e ]* [ \x40 - \x7e ] )    ///g
     own_ansi_re         = /// ( (?: \x1b \[ [^ \x40 - \x7e ]* [ \x40 - \x7e ] )+ ) ///g
-    strip_ansi          = ( text ) -> text.replace own_ansi_re, ''
+    strip_ansi          = ( text, replacement = '' ) -> text.replace own_ansi_re, replacement
     #.........................................................................................................
     return { strip_ansi, internals: { ansi_re: own_ansi_re, own_single_ansi_re, }, }
 

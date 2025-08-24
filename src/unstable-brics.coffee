@@ -146,13 +146,19 @@ BRICS =
 
     #=======================================================================================================
     c =
-      other:        C.black   + C.bg_white    + C.bold
       reset:        C.default + C.bg_default  + C.bold0
-      folder_path:  C.black   + C.bg_white    + C.bold
-      file_name:    C.black   + C.bg_green    + C.bold
-      callee:       C.black   + C.bg_yellow   + C.bold
+      folder_path:  C.black   + C.bg_silver    + C.bold
+      file_name:    C.wine     + C.bg_silver    + C.bold
       line_nr:      C.black   + C.bg_blue     + C.bold
-      column_nr:    C.black   + C.bg_red      + C.bold
+      column_nr:    C.black   + C.bg_blue      + C.bold
+      callee:       C.black   + C.bg_yellow   + C.bold
+    # c =
+    #   reset:        C.default + C.bg_default  + C.bold0
+    #   folder_path:  C.black   + C.bg_slategray    + C.bold
+    #   file_name:    C.black   + C.bg_caramel    + C.bold
+    #   line_nr:      C.black   + C.bg_slategray     + C.bold
+    #   column_nr:    C.black   + C.bg_slategray      + C.bold
+    #   callee:       C.white   + C.bg_caramel   + C.bold
     #.......................................................................................................
     templates =
       format_stack:
@@ -162,9 +168,9 @@ BRICS =
           # path:         ( text ) -> "#{C.white+C.bg_green}#{text}#{C.default+C.bg_default}"
           folder_path:  ( text ) -> c.folder_path  + ' '    + text + ''     + c.reset
           file_name:    ( text ) -> c.file_name    + ''     + text + ' '    + c.reset
+          line_nr:      ( text ) -> c.line_nr      + ' ('    + text + ''    + c.reset
+          column_nr:    ( text ) -> c.column_nr    + ':'    + text + ') '    + c.reset
           callee:       ( text ) -> c.callee       + ' # '  + text + '() '  + c.reset
-          line_nr:      ( text ) -> c.line_nr      + ' :'   + text + ' '    + c.reset
-          column_nr:    ( text ) -> c.column_nr    + ' :'   + text + ' '    + c.reset
 
     #-------------------------------------------------------------------------------------------------------
     stack_line_re = /// ^
@@ -231,7 +237,7 @@ BRICS =
         callee          = @cfg.format.callee        stack_info.callee
         line_nr         = @cfg.format.line_nr       stack_info.line_nr
         column_nr       = @cfg.format.column_nr     stack_info.column_nr
-        return folder_path + file_name + callee + line_nr + column_nr
+        return folder_path + file_name + line_nr + column_nr + callee
 
     #.......................................................................................................
     return exports = do =>
