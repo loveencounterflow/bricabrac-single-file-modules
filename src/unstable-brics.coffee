@@ -146,33 +146,29 @@ BRICS =
     { type_of,                    } = ( require './unstable-rpr-type_of-brics' ).require_type_of()
 
     #=======================================================================================================
-    c =
-      reset:        C.default + C.bg_default  + C.bold0
-      folder_path:  C.black   + C.bg_silver    + C.bold
-      file_name:    C.wine     + C.bg_silver    + C.bold
-      line_nr:      C.black   + C.bg_blue     + C.bold
-      column_nr:    C.black   + C.bg_blue      + C.bold
-      callee:       C.black   + C.bg_yellow   + C.bold
-    # c =
-    #   reset:        C.default + C.bg_default  + C.bold0
-    #   folder_path:  C.black   + C.bg_slategray    + C.bold
-    #   file_name:    C.black   + C.bg_caramel    + C.bold
-    #   line_nr:      C.black   + C.bg_slategray     + C.bold
-    #   column_nr:    C.black   + C.bg_slategray      + C.bold
-    #   callee:       C.white   + C.bg_caramel   + C.bold
+    main_c              = {}
+    main_c.reset        = C.default + C.bg_default  + C.bold0
+    main_c.folder_path  = C.black   + C.bg_silver   + C.bold
+    main_c.file_name    = C.wine    + C.bg_silver   + C.bold
+    main_c.line_nr      = C.black   + C.bg_blue     + C.bold
+    main_c.column_nr    = C.black   + C.bg_blue     + C.bold
+    main_c.callee       = C.black   + C.bg_yellow   + C.bold
+    #.......................................................................................................
+    internal_c          = Object.create main_c
+    external_c          = Object.create main_c
+    dependency_c        = Object.create main_c
     #.......................................................................................................
     templates =
       format_stack:
         relative:       true # boolean to use CWD, or specify reference path
-        padding:        80
-        color:          c
-        format:
-          # path:         ( text ) -> "#{C.white+C.bg_green}#{text}#{C.default+C.bg_default}"
-          folder_path:  ( text ) -> c.folder_path  + ' '    + text + ''     + c.reset
-          file_name:    ( text ) -> c.file_name    + ''     + text + ' '    + c.reset
-          line_nr:      ( text ) -> c.line_nr      + ' ('    + text + ''    + c.reset
-          column_nr:    ( text ) -> c.column_nr    + ':'    + text + ') '    + c.reset
-          callee:       ( text ) -> c.callee       + ' # '  + text + '() '  + c.reset
+        padding:
+          path:           80
+          callee:         50
+        color:
+          main:           main_c
+          internal:       internal_c
+          external:       external_c
+          dependency:     dependency_c
 
     #-------------------------------------------------------------------------------------------------------
     stack_line_re = /// ^
@@ -234,13 +230,24 @@ BRICS =
       #-----------------------------------------------------------------------------------------------------
       format_line: ( line ) ->
         stack_info      = @parse_line line
-        folder_path     = @cfg.format.folder_path   stack_info.folder_path
-        file_name       = @cfg.format.file_name     stack_info.file_name
-        callee          = @cfg.format.callee        stack_info.callee
-        line_nr         = @cfg.format.line_nr       stack_info.line_nr
-        column_nr       = @cfg.format.column_nr     stack_info.column_nr
-        padding         = ' '.repeat @cfg.padding - ( strip_ansi folder_path + file_name + line_nr + column_nr ).length
-        return folder_path + file_name + line_nr + column_nr + padding + callee
+        theme           = @cfg.color[ stack_info.type ]
+        #...................................................................................................
+        folder_path     = theme.folder_path  + ' '    + stack_info.folder_path  + ''     + theme.reset
+        file_name       = theme.file_name    + ''     + stack_info.file_name    + ' '    + theme.reset
+        line_nr         = theme.line_nr      + ' ('   + stack_info.line_nr      + ''     + theme.reset
+        column_nr       = theme.column_nr    + ':'    + stack_info.column_nr    + ') '   + theme.reset
+        callee          = theme.callee       + ' # '  + stack_info.callee       + '() '  + theme.reset
+        #...................................................................................................
+        path_length     = ( strip_ansi folder_path + file_name + line_nr + column_nr  ).length
+        callee_length   = ( strip_ansi callee                                         ).length
+        #...................................................................................................
+        path_length     = Math.max 0, @cfg.padding.path    - path_length
+        callee_length   = Math.max 0, @cfg.padding.callee  - callee_length
+        #...................................................................................................
+        padding_path    = theme.folder_path + ( ' '.repeat    path_length ) + theme.reset
+        padding_callee  = theme.callee      + ( ' '.repeat  callee_length ) + theme.reset
+        #...................................................................................................
+        return folder_path + file_name + line_nr + column_nr + padding_path + callee + padding_callee
 
     #.......................................................................................................
     return exports = do =>
