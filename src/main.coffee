@@ -12,6 +12,6 @@ Object.assign module.exports, { unstable: {
   ( require './unstable-callsite-brics'         )...,
   ( require './unstable-dbric-brics'            )...,
   ( require './unstable-temp-brics'             )...,
-  ( require './unstable-rpr-type_of'            )...,
+  ( require './unstable-rpr-type_of-brics'      )...,
   }, }
 

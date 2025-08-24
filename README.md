@@ -89,6 +89,11 @@
   `Get_random::text()`
 * **`[—]`** ensure `Get_random::cfgon_stats` is called when given even when missing or `null` in method call
 
+### Benchmark
+
+* **`[—]`** implement ?`min_count` / ?`max_count` / ?`min_dt` / ?`max_dt`, `prioritize: ( 'dt' | 'count' )`
+  * probably best to stick with `min` or `max` for both `count` and `dt`
+
 ### Errors
 
 * **`[—]`** custom error base class

@@ -138,6 +138,85 @@ BRICS =
     #.......................................................................................................
     return exports = { get_percentage_bar, }
 
+  #===========================================================================================================
+  ### NOTE Future Single-File Module ###
+  require_format_stack: ->
+    { ansi_colors_and_effects: C, } = ( require './ansi-brics' ).require_ansi_colors_and_effects()
+    { type_of,                    } = ( require './unstable-rpr-type_of-brics' ).require_show()
+
+    #=======================================================================================================
+    templates =
+      error_formatter:
+        path:       ( text ) -> "#{C.green}#{text}#{C.bg_default}"
+        line_nr:    ( text ) -> ":#{C.blue}#{text}#{C.bg_default}"
+        column_nr:  ( text ) -> "#{C.red}:#{text}:#{C.bg_default}"
+        function:   ( text ) -> " #{C.gold}#{text}#{C.bg_default}()"
+
+    #-------------------------------------------------------------------------------------------------------
+    stack_line_re = /// ^
+      \s* at \s+
+      (?:
+        (?<callee> .*?    )
+        \s+ \(
+        )?
+      (?<path> .+       ) :
+      (?<line_nr>   \d+ ) :
+      (?<column_nr> \d+ )
+      \)?
+      $ ///;
+
+    #=======================================================================================================
+    internals = Object.freeze { templates, }
+
+    #=======================================================================================================
+    class Format_stack
+
+      #-----------------------------------------------------------------------------------------------------
+      constructor: ( cfg ) ->
+        @cfg = { templates.error_formatter..., cfg..., }
+        me = ( P... ) => @format P...
+        Object.setPrototypeOf me, @
+        return me
+
+      #-----------------------------------------------------------------------------------------------------
+      format: ( error_or_stack_trace ) ->
+        ### TAINT use proper validation ###
+        switch type = type_of error_or_stack_trace
+          when 'error'  then stack_trace = error_or_stack_trace.stack
+          when 'text'   then stack_trace = error_or_stack_trace
+          else throw new Error "Ω___1 expected an error or a text, got a #{type}"
+        return ( (  @format_line) )
+
+      #-----------------------------------------------------------------------------------------------------
+      parse_line: ( line ) ->
+        return null unless ( match = line.match stack_line_re )?
+        [, callee, path, line_nr, column_nr] = match
+        R           = { match.groups..., }
+        R.callee   ?= null
+        R.line_nr   = parseInt R.line_nr,   10
+        R.column_nr = parseInt R.column_nr, 10
+        return R
+
+    ```
+    function parseStackLine(line) {
+      // Matches:
+      // "    at functionName (/path/file.js:10:15)"
+      // "    at /path/file.js:42:1"
+    }
+
+    function parseStackTrace(stack) {
+      return stack
+        .split("\n")
+        .map(parseStackLine)
+        .filter(Boolean);
+    }
+
+    ```
+    #.......................................................................................................
+    return exports = do =>
+      format_stack = new Format_stack()
+      return { format_stack, internals, parseStackLine, parseStackTrace, }
+
 
 #===========================================================================================================
 Object.assign module.exports, BRICS
