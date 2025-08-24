@@ -162,18 +162,17 @@ BRICS =
     internal_c.callee         = C.gray    + C.bg_silver   + C.bold
     #.......................................................................................................
     external_c                = Object.create main_c
-    # external_c.folder_path    = C.black   + C.bg_silver   + C.bold
-    # external_c.file_name      = C.wine    + C.bg_silver   + C.bold
-    # external_c.line_nr        = C.black   + C.bg_blue     + C.bold
-    # external_c.column_nr      = C.black   + C.bg_blue     + C.bold
     external_c.callee         = C.black   + C.bg_lime   + C.bold
     #.......................................................................................................
     dependency_c              = Object.create main_c
-    # dependency_c.folder_path  = C.black   + C.bg_silver   + C.bold
-    # dependency_c.file_name    = C.wine    + C.bg_silver   + C.bold
-    # dependency_c.line_nr      = C.black   + C.bg_blue     + C.bold
-    # dependency_c.column_nr    = C.black   + C.bg_blue     + C.bold
     dependency_c.callee       = C.black   + C.bg_orpiment   + C.bold
+    #.......................................................................................................
+    unparsable_c              = Object.create main_c
+    unparsable_c.folder_path  = C.black   + C.bg_red   + C.bold
+    unparsable_c.file_name    = C.red     + C.bg_red   + C.bold
+    unparsable_c.line_nr      = C.red     + C.bg_red   + C.bold
+    unparsable_c.column_nr    = C.red     + C.bg_red   + C.bold
+    unparsable_c.callee       = C.red     + C.bg_red   + C.bold
     #.......................................................................................................
     templates =
       format_stack:
@@ -186,6 +185,7 @@ BRICS =
           internal:       internal_c
           external:       external_c
           dependency:     dependency_c
+          unparsable:     unparsable_c
 
     #-------------------------------------------------------------------------------------------------------
     stack_line_re = /// ^
@@ -232,16 +232,29 @@ BRICS =
           throw new Error "Ω___5 expected a text, got a #{type}"
         if ( '\n' in line )
           throw new Error "Ω___6 expected a single line, got a text with line breaks"
-        return null unless ( match = line.match stack_line_re )?
-        R           = { match.groups..., }
-        R.callee   ?= '[anonymous]'
-        R.line_nr   = parseInt R.line_nr,   10
-        R.column_nr = parseInt R.column_nr, 10
-        switch true
-          when R.path.startsWith 'node:'                  then  R.type = 'internal'
-          when ( R.path.indexOf '/node_modules/' ) > -1   then  R.type = 'dependency'
-          when R.path.startsWith '../'                    then  R.type = 'external'
-          else                                                  R.type = 'main'
+        if ( match = line.match stack_line_re )?
+          R           = { match.groups..., }
+          R.callee   ?= '[anonymous]'
+          R.line_nr   = parseInt R.line_nr,   10
+          R.column_nr = parseInt R.column_nr, 10
+          switch true
+            when R.path.startsWith 'node:'                  then  R.type = 'internal'
+            when ( R.path.indexOf '/node_modules/' ) > -1   then  R.type = 'dependency'
+            when R.path.startsWith '../'                    then  R.type = 'external'
+            else                                                  R.type = 'main'
+          if ( R.type isnt 'internal' ) and @cfg.relative is true
+            PATH = require 'node:path'
+            # console.log 'Ω___1', PATH.relative process.cwd(), R.path
+            console.log 'Ω___1', PATH.relative '/path/to/hengist-NG/', R.path
+        else
+          R =
+            callee:       ''
+            path:         ''
+            folder_path:  line
+            file_name:    ''
+            line_nr:      ''
+            column_nr:    ''
+            type:         'unparsable'
         return R
 
       #-----------------------------------------------------------------------------------------------------
@@ -258,7 +271,7 @@ BRICS =
         path_length     = ( strip_ansi folder_path + file_name + line_nr + column_nr  ).length
         callee_length   = ( strip_ansi callee                                         ).length
         #...................................................................................................
-        path_length     = Math.max 0, @cfg.padding.path    - path_length
+        path_length     = Math.max 0, @cfg.padding.path    -   path_length
         callee_length   = Math.max 0, @cfg.padding.callee  - callee_length
         #...................................................................................................
         padding_path    = theme.folder_path + ( ' '.repeat    path_length ) + theme.reset
