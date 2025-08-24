@@ -144,6 +144,7 @@ BRICS =
     { ansi_colors_and_effects: C, } = ( require './ansi-brics' ).require_ansi_colors_and_effects()
     { strip_ansi,                 } = ( require './ansi-brics' ).require_strip_ansi()
     { type_of,                    } = ( require './unstable-rpr-type_of-brics' ).require_type_of()
+    { hide,                       } = ( require './various-brics' ).require_managed_property_tools()
 
     #=======================================================================================================
     main_c                    = {}
@@ -211,6 +212,9 @@ BRICS =
         @cfg = { templates.format_stack..., cfg..., }
         me = ( P... ) => @format P...
         Object.setPrototypeOf me, @
+        hide @, 'get_relative_path', do =>
+          try PATH = require 'node:path' catch error then return null
+          return PATH.relative.bind PATH
         return me
 
       #-----------------------------------------------------------------------------------------------------
@@ -223,9 +227,6 @@ BRICS =
         return ( (  @format_line) )
 
       #-----------------------------------------------------------------------------------------------------
-      rewrite_paths: ( line ) ->
-
-      #-----------------------------------------------------------------------------------------------------
       parse_line: ( line ) ->
         ### TAINT use proper validation ###
         unless ( type = type_of line ) is 'text'
@@ -234,18 +235,23 @@ BRICS =
           throw new Error "Ω___6 expected a single line, got a text with line breaks"
         if ( match = line.match stack_line_re )?
           R           = { match.groups..., }
+          is_internal = R.path.startsWith 'node:'
           R.callee   ?= '[anonymous]'
           R.line_nr   = parseInt R.line_nr,   10
           R.column_nr = parseInt R.column_nr, 10
+          #.................................................................................................
+          if @get_relative_path? and ( not is_internal ) and ( @cfg.relative isnt false )
+            reference     = if ( @cfg.relative is true ) then process.cwd() else @cfg.relative
+            R.path        = ( @get_relative_path reference, R.path        )
+            R.folder_path = ( @get_relative_path reference, R.folder_path ) + '/'
+            R.path        = './' + R.path        unless R.path[ 0 ]         in './'
+            R.folder_path = './' + R.folder_path unless R.folder_path[ 0 ]  in './'
+          #.................................................................................................
           switch true
-            when R.path.startsWith 'node:'                  then  R.type = 'internal'
+            when is_internal                                then  R.type = 'internal'
             when ( R.path.indexOf '/node_modules/' ) > -1   then  R.type = 'dependency'
             when R.path.startsWith '../'                    then  R.type = 'external'
             else                                                  R.type = 'main'
-          if ( R.type isnt 'internal' ) and @cfg.relative is true
-            PATH = require 'node:path'
-            # console.log 'Ω___1', PATH.relative process.cwd(), R.path
-            console.log 'Ω___1', PATH.relative '/path/to/hengist-NG/', R.path
         else
           R =
             callee:       ''
