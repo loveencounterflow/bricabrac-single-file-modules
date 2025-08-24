@@ -142,15 +142,29 @@ BRICS =
   ### NOTE Future Single-File Module ###
   require_format_stack: ->
     { ansi_colors_and_effects: C, } = ( require './ansi-brics' ).require_ansi_colors_and_effects()
-    { type_of,                    } = ( require './unstable-rpr-type_of-brics' ).require_show()
+    { type_of,                    } = ( require './unstable-rpr-type_of-brics' ).require_type_of()
 
     #=======================================================================================================
+    c =
+      other:        C.black   + C.bg_white    + C.bold
+      reset:        C.default + C.bg_default  + C.bold0
+      folder_path:  C.black   + C.bg_white    + C.bold
+      file_name:    C.black   + C.bg_green    + C.bold
+      callee:       C.black   + C.bg_yellow   + C.bold
+      line_nr:      C.black   + C.bg_blue     + C.bold
+      column_nr:    C.black   + C.bg_red      + C.bold
+    #.......................................................................................................
     templates =
-      error_formatter:
-        path:       ( text ) -> "#{C.green}#{text}#{C.bg_default}"
-        line_nr:    ( text ) -> ":#{C.blue}#{text}#{C.bg_default}"
-        column_nr:  ( text ) -> "#{C.red}:#{text}:#{C.bg_default}"
-        function:   ( text ) -> " #{C.gold}#{text}#{C.bg_default}()"
+      format_stack:
+        relative:       true # boolean to use CWD, or specify reference path
+        color:          c
+        format:
+          # path:         ( text ) -> "#{C.white+C.bg_green}#{text}#{C.default+C.bg_default}"
+          folder_path:  ( text ) -> c.folder_path  + ' '    + text + ''     + c.reset
+          file_name:    ( text ) -> c.file_name    + ''     + text + ' '    + c.reset
+          callee:       ( text ) -> c.callee       + ' # '  + text + '() '  + c.reset
+          line_nr:      ( text ) -> c.line_nr      + ' :'   + text + ' '    + c.reset
+          column_nr:    ( text ) -> c.column_nr    + ' :'   + text + ' '    + c.reset
 
     #-------------------------------------------------------------------------------------------------------
     stack_line_re = /// ^
@@ -159,9 +173,9 @@ BRICS =
         (?<callee> .*?    )
         \s+ \(
         )?
-      (?<path> .+       ) :
-      (?<line_nr>   \d+ ) :
-      (?<column_nr> \d+ )
+      (?<path>      (?<folder_path> .*? ) (?<file_name> [^ \/ ]+ )  ) :
+      (?<line_nr>   \d+                                             ) :
+      (?<column_nr> \d+                                             )
       \)?
       $ ///;
 
@@ -173,7 +187,7 @@ BRICS =
 
       #-----------------------------------------------------------------------------------------------------
       constructor: ( cfg ) ->
-        @cfg = { templates.error_formatter..., cfg..., }
+        @cfg = { templates.format_stack..., cfg..., }
         me = ( P... ) => @format P...
         Object.setPrototypeOf me, @
         return me
@@ -184,38 +198,45 @@ BRICS =
         switch type = type_of error_or_stack_trace
           when 'error'  then stack_trace = error_or_stack_trace.stack
           when 'text'   then stack_trace = error_or_stack_trace
-          else throw new Error "Ω___1 expected an error or a text, got a #{type}"
+          else throw new Error "Ω___4 expected an error or a text, got a #{type}"
         return ( (  @format_line) )
 
       #-----------------------------------------------------------------------------------------------------
+      rewrite_paths: ( line ) ->
+
+      #-----------------------------------------------------------------------------------------------------
       parse_line: ( line ) ->
+        ### TAINT use proper validation ###
+        unless ( type = type_of line ) is 'text'
+          throw new Error "Ω___5 expected a text, got a #{type}"
+        if ( '\n' in line )
+          throw new Error "Ω___6 expected a single line, got a text with line breaks"
         return null unless ( match = line.match stack_line_re )?
-        [, callee, path, line_nr, column_nr] = match
         R           = { match.groups..., }
-        R.callee   ?= null
+        R.callee   ?= '[anonymous]'
         R.line_nr   = parseInt R.line_nr,   10
         R.column_nr = parseInt R.column_nr, 10
+        switch true
+          when R.path.startsWith 'node:'                  then  R.type = 'internal'
+          when R.path.startsWith '../'                    then  R.type = 'external'
+          when ( R.path.indexOf '/node_modules/' ) > -1   then  R.type = 'dependency'
+          else                                                  R.type = 'main'
         return R
 
-    ```
-    function parseStackLine(line) {
-      // Matches:
-      // "    at functionName (/path/file.js:10:15)"
-      // "    at /path/file.js:42:1"
-    }
+      #-----------------------------------------------------------------------------------------------------
+      format_line: ( line ) ->
+        stack_info      = @parse_line line
+        folder_path     = @cfg.format.folder_path   stack_info.folder_path
+        file_name       = @cfg.format.file_name     stack_info.file_name
+        callee          = @cfg.format.callee        stack_info.callee
+        line_nr         = @cfg.format.line_nr       stack_info.line_nr
+        column_nr       = @cfg.format.column_nr     stack_info.column_nr
+        return folder_path + file_name + callee + line_nr + column_nr
 
-    function parseStackTrace(stack) {
-      return stack
-        .split("\n")
-        .map(parseStackLine)
-        .filter(Boolean);
-    }
-
-    ```
     #.......................................................................................................
     return exports = do =>
       format_stack = new Format_stack()
-      return { format_stack, internals, parseStackLine, parseStackTrace, }
+      return { format_stack, Format_stack, internals, }
 
 
 #===========================================================================================================
