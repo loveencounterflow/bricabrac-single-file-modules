@@ -244,12 +244,12 @@ BRICS =
             reference     = if ( @cfg.relative is true ) then process.cwd() else @cfg.relative
             R.path        = ( @get_relative_path reference, R.path        )
             R.folder_path = ( @get_relative_path reference, R.folder_path ) + '/'
-            R.path        = './' + R.path        unless R.path[ 0 ]         in './'
-            R.folder_path = './' + R.folder_path unless R.folder_path[ 0 ]  in './'
+            # R.path        = './' + R.path        unless R.path[ 0 ]         in './'
+            # R.folder_path = './' + R.folder_path unless R.folder_path[ 0 ]  in './'
           #.................................................................................................
           switch true
             when is_internal                                then  R.type = 'internal'
-            when ( R.path.indexOf '/node_modules/' ) > -1   then  R.type = 'dependency'
+            when /\bnode_modules\//.test R.path             then  R.type = 'dependency'
             when R.path.startsWith '../'                    then  R.type = 'external'
             else                                                  R.type = 'main'
         else
