@@ -191,7 +191,7 @@ BRICS =
     templates =
       format_stack:
         relative:       true # boolean to use CWD, or specify reference path
-        context:        2
+        context:        1
         padding:
           path:           90
           callee:         60
