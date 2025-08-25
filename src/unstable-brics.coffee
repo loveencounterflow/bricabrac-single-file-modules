@@ -191,7 +191,7 @@ BRICS =
     templates =
       format_stack:
         relative:       true # boolean to use CWD, or specify reference path
-        context:        1
+        context:        2
         padding:
           path:           90
           callee:         60
@@ -236,10 +236,16 @@ BRICS =
       format: ( error_or_stack ) ->
         ### TAINT use proper validation ###
         switch type = type_of error_or_stack
-          when 'error'  then stack = error_or_stack.stack
-          when 'text'   then stack = error_or_stack
+          when 'error'
+            stack     = error_or_stack.stack
+            # headline  =
+          when 'text'
+            stack     = error_or_stack
+            # headline  = stack.
           else throw new Error "Ω___4 expected an error or a text, got a #{type}"
-        lines = ( stack.split '\n' ).reverse()
+        lines = stack.split '\n'
+        lines.push lines[ 0 ]
+        lines = lines.reverse()
         return ( ( @format_line line ) for line in lines ).join '\n'
 
       #-----------------------------------------------------------------------------------------------------
@@ -283,7 +289,7 @@ BRICS =
       format_line: ( line ) ->
         { stack_info,
           source_reference,   } = @_format_source_reference line
-        context = @_get_context stack_info
+        context = if @cfg.context is false then [] else @_get_context stack_info
         return [ source_reference, context..., ].join '\n'
 
       #-----------------------------------------------------------------------------------------------------
