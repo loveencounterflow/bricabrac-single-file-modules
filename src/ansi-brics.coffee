@@ -59,6 +59,7 @@ ANSI_BRICS =
     #.........................................................................................................
     rgb_dec =
       black:              [   0,   0,   0, ]
+      darkslatish:        [  24,  40,  40, ]
       darkslategray:      [  47,  79,  79, ]
       dimgray:            [ 105, 105, 105, ]
       slategray:          [ 112, 128, 144, ]
@@ -112,6 +113,7 @@ ANSI_BRICS =
       reset:              '\x1b[0m'
       #.......................................................................................................
       black:              ANSI.fg_from_dec rgb_dec.black
+      darkslatish:        ANSI.fg_from_dec rgb_dec.darkslatish
       darkslategray:      ANSI.fg_from_dec rgb_dec.darkslategray
       dimgray:            ANSI.fg_from_dec rgb_dec.dimgray
       slategray:          ANSI.fg_from_dec rgb_dec.slategray
@@ -151,6 +153,7 @@ ANSI_BRICS =
       zinnia:             ANSI.fg_from_hex rgb_hex.zinnia
       #.......................................................................................................
       bg_black:           ANSI.bg_from_dec rgb_dec.black
+      bg_darkslatish:     ANSI.bg_from_dec rgb_dec.darkslatish
       bg_darkslategray:   ANSI.bg_from_dec rgb_dec.darkslategray
       bg_dimgray:         ANSI.bg_from_dec rgb_dec.dimgray
       bg_slategray:       ANSI.bg_from_dec rgb_dec.slategray

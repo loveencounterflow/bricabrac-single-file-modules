@@ -145,6 +145,9 @@ BRICS =
     { strip_ansi,                 } = ( require './ansi-brics' ).require_strip_ansi()
     { type_of,                    } = ( require './unstable-rpr-type_of-brics' ).require_type_of()
     { hide,                       } = ( require './various-brics' ).require_managed_property_tools()
+    { show_no_colors: rpr,        } = ( require './main' ).unstable.require_show()
+    ### TAINT make use of `FS` optional like `get_relative_path()` ###
+    FS                              = require 'node:fs'
 
     #=======================================================================================================
     main_c                    = {}
@@ -154,6 +157,22 @@ BRICS =
     main_c.callee             = C.black   + C.bg_lime     + C.bold
     main_c.line_nr            = C.black   + C.bg_blue     + C.bold
     main_c.column_nr          = C.black   + C.bg_blue     + C.bold
+    main_c.context            = C.lightslategray  + C.bg_darkslatish
+    # main_c.context            = C.lightslategray  + C.bg_darkslategray
+    main_c.hit                = C.white           + C.bg_darkslatish + C.bold
+    main_c.spot               = C.yellow             + C.bg_wine + C.bold
+    # main_c.hit                = C.white          + C.bg_forest + C.bold
+    main_c.reference          = C.lightslategray  + C.bg_black
+    #.......................................................................................................
+    external_c                = Object.create main_c
+    external_c.folder_path    = C.black   + C.bg_yellow   + C.bold
+    external_c.file_name      = C.wine    + C.bg_yellow   + C.bold
+    external_c.callee         = C.black   + C.bg_yellow   + C.bold
+    #.......................................................................................................
+    dependency_c              = Object.create main_c
+    dependency_c.folder_path  = C.black   + C.bg_orpiment + C.bold
+    dependency_c.file_name    = C.wine    + C.bg_orpiment + C.bold
+    dependency_c.callee       = C.black   + C.bg_orpiment + C.bold
     #.......................................................................................................
     internal_c                = Object.create main_c
     internal_c.folder_path    = C.gray    + C.bg_silver   + C.bold
@@ -162,29 +181,20 @@ BRICS =
     internal_c.column_nr      = C.gray    + C.bg_silver   + C.bold
     internal_c.callee         = C.gray    + C.bg_silver   + C.bold
     #.......................................................................................................
-    external_c                = Object.create main_c
-    external_c.folder_path    = C.black   + C.bg_yellow   + C.bold
-    external_c.file_name      = C.wine    + C.bg_yellow   + C.bold
-    external_c.callee         = C.black   + C.bg_yellow   + C.bold
-    #.......................................................................................................
-    dependency_c              = Object.create main_c
-    dependency_c.folder_path  = C.black   + C.bg_orpiment   + C.bold
-    dependency_c.file_name    = C.wine    + C.bg_orpiment   + C.bold
-    dependency_c.callee       = C.black   + C.bg_orpiment   + C.bold
-    #.......................................................................................................
     unparsable_c              = Object.create main_c
-    unparsable_c.folder_path  = C.black   + C.bg_red   + C.bold
-    unparsable_c.file_name    = C.red     + C.bg_red   + C.bold
-    unparsable_c.line_nr      = C.red     + C.bg_red   + C.bold
-    unparsable_c.column_nr    = C.red     + C.bg_red   + C.bold
-    unparsable_c.callee       = C.red     + C.bg_red   + C.bold
+    unparsable_c.folder_path  = C.black   + C.bg_red      + C.bold
+    unparsable_c.file_name    = C.red     + C.bg_red      + C.bold
+    unparsable_c.line_nr      = C.red     + C.bg_red      + C.bold
+    unparsable_c.column_nr    = C.red     + C.bg_red      + C.bold
+    unparsable_c.callee       = C.red     + C.bg_red      + C.bold
     #.......................................................................................................
     templates =
       format_stack:
         relative:       true # boolean to use CWD, or specify reference path
+        context:        2
         padding:
-          path:           80
-          callee:         50
+          path:           90
+          callee:         60
         color:
           main:           main_c
           internal:       internal_c
@@ -219,16 +229,18 @@ BRICS =
         hide @, 'get_relative_path', do =>
           try PATH = require 'node:path' catch error then return null
           return PATH.relative.bind PATH
+        hide @, 'state', { cache: new Map(), }
         return me
 
       #-----------------------------------------------------------------------------------------------------
-      format: ( error_or_stack_trace ) ->
+      format: ( error_or_stack ) ->
         ### TAINT use proper validation ###
-        switch type = type_of error_or_stack_trace
-          when 'error'  then stack_trace = error_or_stack_trace.stack
-          when 'text'   then stack_trace = error_or_stack_trace
+        switch type = type_of error_or_stack
+          when 'error'  then stack = error_or_stack.stack
+          when 'text'   then stack = error_or_stack
           else throw new Error "Ω___4 expected an error or a text, got a #{type}"
-        return ( (  @format_line) )
+        lines = ( stack.split '\n' ).reverse()
+        return ( ( @format_line line ) for line in lines ).join '\n'
 
       #-----------------------------------------------------------------------------------------------------
       parse_line: ( line ) ->
@@ -269,6 +281,13 @@ BRICS =
 
       #-----------------------------------------------------------------------------------------------------
       format_line: ( line ) ->
+        { stack_info,
+          source_reference,   } = @_format_source_reference line
+        context = @_get_context stack_info
+        return [ source_reference, context..., ].join '\n'
+
+      #-----------------------------------------------------------------------------------------------------
+      _format_source_reference: ( line ) ->
         stack_info      = @parse_line line
         theme           = @cfg.color[ stack_info.type ]
         #...................................................................................................
@@ -287,7 +306,41 @@ BRICS =
         padding_path    = theme.folder_path + ( ' '.repeat    path_length ) + theme.reset
         padding_callee  = theme.callee      + ( ' '.repeat  callee_length ) + theme.reset
         #...................................................................................................
-        return folder_path + file_name + line_nr + column_nr + padding_path + callee + padding_callee
+        source_reference  = folder_path + file_name + line_nr + column_nr + padding_path + callee + padding_callee
+        return { stack_info, source_reference, }
+
+      #-----------------------------------------------------------------------------------------------------
+      _get_context: ( stack_info ) ->
+        return [] if ( stack_info.type in [ 'internal', 'unparsable', ] ) or ( stack_info.path is '' )
+        try
+          source = FS.readFileSync stack_info.path, { encoding: 'utf-8', }
+        catch error
+          throw error unless error.code is 'ENOENT'
+          return [ "unable to read file #{rpr stack_info.path}", ]
+        #...................................................................................................
+        theme     = @cfg.color[ stack_info.type ]
+        ref_width = 7
+        width     = @cfg.padding.path + @cfg.padding.callee - ref_width
+        source    = source.split '\n'
+        hit_idx   = stack_info.line_nr - 1
+        # return source[ hit_idx ] if @cfg.context < 1
+        #...................................................................................................
+        first_idx = Math.max ( hit_idx - @cfg.context ), 0
+        last_idx  = Math.min ( hit_idx + @cfg.context ), source.length - 1
+        R         = []
+        spot_re   = /// ^ (?<before>.{#{stack_info.column_nr - 1}} ) (?<spot> \w* ) (?<behind> .* ) $///
+        #...................................................................................................
+        for idx in [ first_idx .. last_idx ]
+          line      = source[ idx ].padEnd width, ' '
+          reference = theme.reference + ( "#{idx + 1} ".padStart ref_width, ' ' )
+          # reference = theme.reference + ( "#{idx + 1}│ ".padStart ref_width, ' ' )
+          if ( idx is hit_idx ) and ( match = line.match spot_re )?
+            { before, spot, behind, } = match.groups
+            R.push reference + theme.hit + before + theme.spot + spot + theme.hit + behind + theme.reset
+          else
+            R.push reference + theme.context  + line + theme.reset
+        #...................................................................................................
+        return R
 
     #.......................................................................................................
     return exports = do =>
