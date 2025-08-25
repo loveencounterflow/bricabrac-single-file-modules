@@ -175,11 +175,11 @@ BRICS =
     dependency_c.callee       = C.black   + C.bg_orpiment + C.bold
     #.......................................................................................................
     internal_c                = Object.create main_c
-    internal_c.folder_path    = C.gray    + C.bg_silver   + C.bold
-    internal_c.file_name      = C.gray    + C.bg_silver   + C.bold
-    internal_c.line_nr        = C.gray    + C.bg_silver   + C.bold
-    internal_c.column_nr      = C.gray    + C.bg_silver   + C.bold
-    internal_c.callee         = C.gray    + C.bg_silver   + C.bold
+    internal_c.folder_path    = C.gray    + C.bg_darkslatish
+    internal_c.file_name      = C.gray    + C.bg_darkslatish
+    internal_c.line_nr        = C.gray    + C.bg_darkslatish
+    internal_c.column_nr      = C.gray    + C.bg_darkslatish
+    internal_c.callee         = C.gray    + C.bg_darkslatish
     #.......................................................................................................
     unparsable_c              = Object.create main_c
     unparsable_c.folder_path  = C.black   + C.bg_red      + C.bold
@@ -341,7 +341,7 @@ BRICS =
           if ( idx is hit_idx )
             before    = line[ ... stack_info.column_nr - 1    ]
             spot      = line[     stack_info.column_nr - 1 .. ]
-            behind    = ' '.repeat Math.max 0, line.length - width
+            behind    = ' '.repeat Math.max 0, width - line.length
             R.push reference + theme.hit + before + theme.spot + spot + theme.hit + behind + theme.reset
           else
             line      = line.padEnd width, ' '
