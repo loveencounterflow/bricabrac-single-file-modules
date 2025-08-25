@@ -328,16 +328,17 @@ BRICS =
         first_idx = Math.max ( hit_idx - @cfg.context ), 0
         last_idx  = Math.min ( hit_idx + @cfg.context ), source.length - 1
         R         = []
-        spot_re   = /// ^ (?<before>.{#{stack_info.column_nr - 1}} ) (?<spot> \w* ) (?<behind> .* ) $///
         #...................................................................................................
         for idx in [ first_idx .. last_idx ]
-          line      = source[ idx ].padEnd width, ' '
+          line      = source[ idx ]
           reference = theme.reference + ( "#{idx + 1} ".padStart ref_width, ' ' )
-          # reference = theme.reference + ( "#{idx + 1}│ ".padStart ref_width, ' ' )
-          if ( idx is hit_idx ) and ( match = line.match spot_re )?
-            { before, spot, behind, } = match.groups
+          if ( idx is hit_idx )
+            before    = line[ ... stack_info.column_nr - 1    ]
+            spot      = line[     stack_info.column_nr - 1 .. ]
+            behind    = ' '.repeat Math.max 0, line.length - width
             R.push reference + theme.hit + before + theme.spot + spot + theme.hit + behind + theme.reset
           else
+            line      = line.padEnd width, ' '
             R.push reference + theme.context  + line + theme.reset
         #...................................................................................................
         return R
