@@ -149,11 +149,11 @@ BRICS =
     #=======================================================================================================
     main_c                    = {}
     main_c.reset              = C.reset # C.default + C.bg_default  + C.bold0
-    main_c.folder_path        = C.black   + C.bg_silver   + C.bold
-    main_c.file_name          = C.wine    + C.bg_silver   + C.bold
+    main_c.folder_path        = C.black   + C.bg_lime     + C.bold
+    main_c.file_name          = C.wine    + C.bg_lime     + C.bold
+    main_c.callee             = C.black   + C.bg_lime     + C.bold
     main_c.line_nr            = C.black   + C.bg_blue     + C.bold
     main_c.column_nr          = C.black   + C.bg_blue     + C.bold
-    main_c.callee             = C.black   + C.bg_yellow   + C.bold
     #.......................................................................................................
     internal_c                = Object.create main_c
     internal_c.folder_path    = C.gray    + C.bg_silver   + C.bold
@@ -163,9 +163,13 @@ BRICS =
     internal_c.callee         = C.gray    + C.bg_silver   + C.bold
     #.......................................................................................................
     external_c                = Object.create main_c
-    external_c.callee         = C.black   + C.bg_lime   + C.bold
+    external_c.folder_path    = C.black   + C.bg_yellow   + C.bold
+    external_c.file_name      = C.wine    + C.bg_yellow   + C.bold
+    external_c.callee         = C.black   + C.bg_yellow   + C.bold
     #.......................................................................................................
     dependency_c              = Object.create main_c
+    dependency_c.folder_path  = C.black   + C.bg_orpiment   + C.bold
+    dependency_c.file_name    = C.wine    + C.bg_orpiment   + C.bold
     dependency_c.callee       = C.black   + C.bg_orpiment   + C.bold
     #.......................................................................................................
     unparsable_c              = Object.create main_c
