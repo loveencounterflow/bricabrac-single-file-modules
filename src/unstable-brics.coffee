@@ -306,7 +306,9 @@ BRICS =
         stack_info      = @parse_line line
         theme           = @cfg.color[ stack_info.type ]
         #...................................................................................................
-        return theme.text stack_info.text + theme.reset if stack_info.type is 'unparsable'
+        if stack_info.type is 'unparsable'
+          source_reference = theme.text + stack_info.text + theme.reset
+          return { stack_info, source_reference, }
         #...................................................................................................
         folder_path     = theme.folder_path  + ' '    + stack_info.folder_path  + ''     + theme.reset
         file_name       = theme.file_name    + ''     + stack_info.file_name    + ' '    + theme.reset
