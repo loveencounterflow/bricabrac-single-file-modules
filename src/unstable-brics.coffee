@@ -189,6 +189,10 @@ BRICS =
     headline_c.headline       = C.black   + C.bg_red      + C.bold
     headline_c.reset          = main_c.reset
     #.......................................................................................................
+    linkline_c                = {}
+    linkline_c.linkline       = C.black   + C.bg_turquoise      + C.bold
+    linkline_c.reset          = main_c.reset
+    #.......................................................................................................
     templates =
       format_stack:
         relative:       true # boolean to use CWD, or specify reference path
@@ -203,6 +207,7 @@ BRICS =
           dependency:     dependency_c
           unparsable:     unparsable_c
           headline:       headline_c
+          linkline:       linkline_c
 
     #-------------------------------------------------------------------------------------------------------
     stack_line_re = /// ^
@@ -227,7 +232,7 @@ BRICS =
       constructor: ( cfg ) ->
         @cfg              = { templates.format_stack..., cfg..., }
         @cfg.padding.line = @cfg.padding.path + @cfg.padding.callee
-        me = ( P... ) => @format P...
+        me                = ( P... ) => @format P...
         Object.setPrototypeOf me, @
         hide @, 'get_relative_path', do =>
           try PATH = require 'node:path' catch error then return null
@@ -241,19 +246,26 @@ BRICS =
         switch type = type_of error_or_stack
           when 'error'
             error     = error_or_stack
+            cause     = error.cause ? null
             stack     = error.stack
           when 'text'
             error     = null
+            cause     = null
             stack     = error_or_stack
             # headline  = stack.
           else throw new Error "Ω___4 expected an error or a text, got a #{type}"
-        lines = stack.split '\n'
-        if lines.length > 1
+        #...................................................................................................
+        if ( lines = stack.split '\n' ).length is 1
+          R = @format_line line
+        else
           headline  = @format_headline lines.shift(), error
           lines     = lines.reverse()
           lines     = ( ( @format_line line ) for line in lines )
-          return [ headline, lines..., headline, ].join '\n'
-        return @format_line line
+          R         = [ headline, lines..., headline, ].join '\n'
+        #...................................................................................................
+        if cause?
+          R = ( @format cause ) + @get_linkline() + R
+        return R
 
       #-----------------------------------------------------------------------------------------------------
       parse_line: ( line ) ->
@@ -295,11 +307,20 @@ BRICS =
 
       #-----------------------------------------------------------------------------------------------------
       format_headline: ( line, error = null ) ->
+        ### TAINT also show code, name where aprropriate ###
+        #   show_error_with_source_context error.cause, " Cause: #{error.cause.constructor.name}: #{error.cause.message} "
         theme       = @cfg.color.headline
         error_class = error?.constructor.name ? '(no error class)'
         line        = " [#{error_class}] #{line}"
         line        = line.padEnd @cfg.padding.line, ' '
         return theme.headline + line + theme.reset
+
+      #-----------------------------------------------------------------------------------------------------
+      get_linkline: ->
+        theme       = @cfg.color.linkline
+        line        = "  the below error was caused by the one above  △  △  △  "
+        line        = line.padStart @cfg.padding.line, ' △ '
+        return '\n' + theme.linkline + line + theme.reset + '\n'
 
       #-----------------------------------------------------------------------------------------------------
       _format_source_reference: ( line ) ->
