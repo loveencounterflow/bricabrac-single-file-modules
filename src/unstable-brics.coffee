@@ -181,12 +181,13 @@ BRICS =
     internal_c.column_nr      = C.gray    + C.bg_darkslatish
     internal_c.callee         = C.gray    + C.bg_darkslatish
     #.......................................................................................................
-    unparsable_c              = Object.create main_c
-    unparsable_c.folder_path  = C.black   + C.bg_red      + C.bold
-    unparsable_c.file_name    = C.red     + C.bg_red      + C.bold
-    unparsable_c.line_nr      = C.red     + C.bg_red      + C.bold
-    unparsable_c.column_nr    = C.red     + C.bg_red      + C.bold
-    unparsable_c.callee       = C.red     + C.bg_red      + C.bold
+    unparsable_c              = {}
+    unparsable_c.text         = C.black   + C.bg_violet      + C.bold
+    unparsable_c.reset        = main_c.reset
+    #.......................................................................................................
+    headline_c                = {}
+    headline_c.headline       = C.black   + C.bg_red      + C.bold
+    headline_c.reset          = main_c.reset
     #.......................................................................................................
     templates =
       format_stack:
@@ -201,6 +202,7 @@ BRICS =
           external:       external_c
           dependency:     dependency_c
           unparsable:     unparsable_c
+          headline:       headline_c
 
     #-------------------------------------------------------------------------------------------------------
     stack_line_re = /// ^
@@ -223,7 +225,8 @@ BRICS =
 
       #-----------------------------------------------------------------------------------------------------
       constructor: ( cfg ) ->
-        @cfg = { templates.format_stack..., cfg..., }
+        @cfg              = { templates.format_stack..., cfg..., }
+        @cfg.padding.line = @cfg.padding.path + @cfg.padding.callee
         me = ( P... ) => @format P...
         Object.setPrototypeOf me, @
         hide @, 'get_relative_path', do =>
@@ -237,52 +240,50 @@ BRICS =
         ### TAINT use proper validation ###
         switch type = type_of error_or_stack
           when 'error'
-            stack     = error_or_stack.stack
-            # headline  =
+            error     = error_or_stack
+            stack     = error.stack
           when 'text'
+            error     = null
             stack     = error_or_stack
             # headline  = stack.
           else throw new Error "Ω___4 expected an error or a text, got a #{type}"
         lines = stack.split '\n'
-        lines.push lines[ 0 ]
-        lines = lines.reverse()
-        return ( ( @format_line line ) for line in lines ).join '\n'
+        if lines.length > 1
+          headline  = @format_headline lines.shift(), error
+          lines     = lines.reverse()
+          lines     = ( ( @format_line line ) for line in lines )
+          return [ headline, lines..., headline, ].join '\n'
+        return @format_line line
 
       #-----------------------------------------------------------------------------------------------------
       parse_line: ( line ) ->
         ### TAINT use proper validation ###
         unless ( type = type_of line ) is 'text'
           throw new Error "Ω___5 expected a text, got a #{type}"
+        #...................................................................................................
         if ( '\n' in line )
           throw new Error "Ω___6 expected a single line, got a text with line breaks"
-        if ( match = line.match stack_line_re )?
-          R           = { match.groups..., }
-          is_internal = R.path.startsWith 'node:'
-          R.callee   ?= '[anonymous]'
-          R.line_nr   = parseInt R.line_nr,   10
-          R.column_nr = parseInt R.column_nr, 10
-          #.................................................................................................
-          if @get_relative_path? and ( not is_internal ) and ( @cfg.relative isnt false )
-            reference     = if ( @cfg.relative is true ) then process.cwd() else @cfg.relative
-            R.path        = ( @get_relative_path reference, R.path        )
-            R.folder_path = ( @get_relative_path reference, R.folder_path ) + '/'
-            # R.path        = './' + R.path        unless R.path[ 0 ]         in './'
-            # R.folder_path = './' + R.folder_path unless R.folder_path[ 0 ]  in './'
-          #.................................................................................................
-          switch true
-            when is_internal                                then  R.type = 'internal'
-            when /\bnode_modules\//.test R.path             then  R.type = 'dependency'
-            when R.path.startsWith '../'                    then  R.type = 'external'
-            else                                                  R.type = 'main'
-        else
-          R =
-            callee:       ''
-            path:         ''
-            folder_path:  line
-            file_name:    ''
-            line_nr:      ''
-            column_nr:    ''
-            type:         'unparsable'
+        #...................................................................................................
+        return { text: line, type: 'unparsable', } unless ( match = line.match stack_line_re )?
+        #...................................................................................................
+        R           = { match.groups..., }
+        is_internal = R.path.startsWith 'node:'
+        R.callee   ?= '[anonymous]'
+        R.line_nr   = parseInt R.line_nr,   10
+        R.column_nr = parseInt R.column_nr, 10
+        #...................................................................................................
+        if @get_relative_path? and ( not is_internal ) and ( @cfg.relative isnt false )
+          reference     = if ( @cfg.relative is true ) then process.cwd() else @cfg.relative
+          R.path        = ( @get_relative_path reference, R.path        )
+          R.folder_path = ( @get_relative_path reference, R.folder_path ) + '/'
+          # R.path        = './' + R.path        unless R.path[ 0 ]         in './'
+          # R.folder_path = './' + R.folder_path unless R.folder_path[ 0 ]  in './'
+        #...................................................................................................
+        switch true
+          when is_internal                                then  R.type = 'internal'
+          when /\bnode_modules\//.test R.path             then  R.type = 'dependency'
+          when R.path.startsWith '../'                    then  R.type = 'external'
+          else                                                  R.type = 'main'
         return R
 
       #-----------------------------------------------------------------------------------------------------
@@ -293,9 +294,19 @@ BRICS =
         return [ source_reference, context..., ].join '\n'
 
       #-----------------------------------------------------------------------------------------------------
+      format_headline: ( line, error = null ) ->
+        theme       = @cfg.color.headline
+        error_class = error?.constructor.name ? '(no error class)'
+        line        = " [#{error_class}] #{line}"
+        line        = line.padEnd @cfg.padding.line, ' '
+        return theme.headline + line + theme.reset
+
+      #-----------------------------------------------------------------------------------------------------
       _format_source_reference: ( line ) ->
         stack_info      = @parse_line line
         theme           = @cfg.color[ stack_info.type ]
+        #...................................................................................................
+        return theme.text stack_info.text + theme.reset if stack_info.type is 'unparsable'
         #...................................................................................................
         folder_path     = theme.folder_path  + ' '    + stack_info.folder_path  + ''     + theme.reset
         file_name       = theme.file_name    + ''     + stack_info.file_name    + ' '    + theme.reset
