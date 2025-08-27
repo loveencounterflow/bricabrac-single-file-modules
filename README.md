@@ -102,6 +102,8 @@
 
 * **`[—]`** solution to capture existing error, issue new one a la Python's `raise Error_2 from Error_1`
 
+* **`[—]`** omit repeated lines when displaying `error.cause`?
+
 ### Other
 
 * **`[—]`** publish `clean()` solution to the 'Assign-Problem with Intermediate Nulls and Undefineds' in the
