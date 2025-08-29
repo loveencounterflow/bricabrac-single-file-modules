@@ -12,6 +12,7 @@ BRICS =
   #=========================================================================================================
   ### NOTE Future Single-File Module ###
   require_anybase: ->
+    { show_no_colors: rpr,  } = ( require '..' ).unstable.require_show()
 
     #-------------------------------------------------------------------------------------------------------
     ### thx to https://chatgpt.com/s/t_68b1810ab4708191bc841f078a6e0e66 ###
@@ -74,7 +75,7 @@ BRICS =
       R     = 0
       for chr in Array.from str
         val = map.get(chr)
-        throw new Error "Ωanyb___2 Invalid character: ${rpr chr}" unless val?
+        throw new Error "Ωanyb___2 Invalid character: #{rpr chr}" unless val?
         R = R * base + val
       return R
 
