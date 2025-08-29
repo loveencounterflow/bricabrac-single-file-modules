@@ -13,5 +13,6 @@ Object.assign module.exports, { unstable: {
   ( require './unstable-dbric-brics'            )...,
   ( require './unstable-temp-brics'             )...,
   ( require './unstable-rpr-type_of-brics'      )...,
+  ( require './unstable-anybase-brics'          )...,
   }, }
 
