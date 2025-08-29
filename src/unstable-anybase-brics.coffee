@@ -53,6 +53,7 @@ BRICS =
     ```
 
     #-------------------------------------------------------------------------------------------------------
+    ### TAINT fall back to `Number::toString()` where possible (but not for base 10 as it uses exponential notation) ###
     encode = ( n, alphabet ) ->
       throw new RangeError "Ωanyb___2 Only nonnegative integers supported" if n < 0
       return alphabet[0] if n is 0
@@ -66,6 +67,7 @@ BRICS =
 
     #-------------------------------------------------------------------------------------------------------
     ### TAINT avoid building map, use index ###
+    ### TAINT fall back to `Number()`, `parseInt()` where possible ###
     decode = ( str, alphabet ) ->
       base  = alphabet.length
       map   = new Map(alphabet.split("").map((ch, i) => [ch, i]))
