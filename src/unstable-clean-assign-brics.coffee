@@ -12,12 +12,22 @@ BRICS =
   #=========================================================================================================
   ### NOTE Future Single-File Module ###
   require_clean_assign: ->
-    # { show_no_colors: rpr,  } = ( require '..' ).unstable.require_show()
 
     #-------------------------------------------------------------------------------------------------------
-    clean         = ( x    ) -> Object.fromEntries ( [ k, v, ] for k, v of x when v isnt undefined )
-    clean_all     = ( P... ) -> ( ( clean x ) for x in P )
-    clean_assign  = ( P... ) -> Object.assign ( clean_all P... )...
+    clean = ( x ) ->
+      throw new Error "Ωrca__1 unable to clean frozen object" if Object.isFrozen x
+      delete x[ k ] for k, v of x when v is undefined
+      return x
+
+    #-------------------------------------------------------------------------------------------------------
+    clean_all = ( P... ) -> ( ( clean x ) for x in P )
+
+    #-------------------------------------------------------------------------------------------------------
+    clean_assign  = ( target, P...  ) ->
+      R = clean target
+      for p in P
+        R[ k ] = v for k, v of p when v isnt undefined
+      return R
 
     #.......................................................................................................
     return exports = { clean, clean_all, clean_assign, }
