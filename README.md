@@ -104,6 +104,13 @@
 
 * **`[—]`** omit repeated lines when displaying `error.cause`?
 
+### Remap
+
+* **`[—]`** provide facility to retrieve all own keys (strings+symbols)
+* **`[—]`** use property descriptors
+* **`[—]`** can be expanded to provide `shallow_clone()`, `deep_clone()`
+
+
 ### Other
 
 * **`[—]`** publish `clean()` solution to the 'Assign-Problem with Intermediate Nulls and Undefineds' in the
