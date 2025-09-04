@@ -19,7 +19,7 @@ BRICS =
     { nameit,               } = SFMODULES.require_nameit()
     { remap,                } = SFMODULES.unstable.require_remap()
     { freeze,               } = Object
-    # { show_no_colors: rpr,  } = SFMODULES.unstable.require_show()
+    { show_no_colors: rpr,  } = SFMODULES.unstable.require_show()
     # { type_of,              } = SFMODULES.unstable.require_type_of()
     CFG                       = Symbol.for 'cfg'
 
@@ -45,6 +45,12 @@ BRICS =
           else                  clean_assign data,                            @data               ### d1 m0 ###
         else if mapping?  then                       remap                    @data,   mapping    ### d0 m1 ###
         return R                                                                                  ### d0 m0 ###
+
+      #-----------------------------------------------------------------------------------------------------
+      validate: ( x, data = null, mapping = null ) ->
+        return x if @isa x, data, mapping
+        ### TAINT use better rpr() ###
+        throw new Error "Ωbsk_100 not a valid #{@name}: #{x}"
 
       #-----------------------------------------------------------------------------------------------------
       assign: ( P... ) -> clean_assign @data, P...
