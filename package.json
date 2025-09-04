@@ -1,6 +1,6 @@
 {
   "name": "bricabrac-single-file-modules",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "",
   "main": "lib/main.js",
   "repository": "github:loveencounterflow/bricabrac-single-file-modules",
