@@ -79,8 +79,34 @@ BRICS =
         R = R * base + val
       return R
 
+    #-------------------------------------------------------------------------------------------------------
+    ### Logarithm to a given `base` of a given number `n` ###
+    log_to_base = ( n, base ) -> ( Math.log n ) / ( Math.log base )
+
+    #-------------------------------------------------------------------------------------------------------
+    ### Number of digits required to write a given number `n` in a positional system with a given `base` ###
+    get_required_digits = ( n, base ) -> Math.ceil log_to_base n, base
+
+    #-------------------------------------------------------------------------------------------------------
+    ### Maximum number of highest-value digits (i.e. `base - 1`) to write a number that does not exceed a
+        given number `max_n` (e.g. `Number.MAX_SAFE_INTEGER`) ###
+    get_max_niners = ( max_n, base ) -> ( get_required_digits max_n, base ) - 1
+
+    #-------------------------------------------------------------------------------------------------------
+    ### Maximum integer that can be encoded with the niners of a given base that doesn't exceed a given
+        `max_n` (e.g. `Number.MAX_SAFE_INTEGER`) ###
+    get_max_integer = ( max_n, base ) -> ( base ** get_max_niners max_n, base ) - 1
+
     #.......................................................................................................
-    return exports = { encode, decode, encode_bigint, decode_bigint, }
+    return exports = {
+      encode,
+      decode,
+      encode_bigint,
+      decode_bigint,
+      log_to_base,
+      get_required_digits,
+      get_max_niners,
+      get_max_integer, }
 
 #===========================================================================================================
 Object.assign module.exports, BRICS
