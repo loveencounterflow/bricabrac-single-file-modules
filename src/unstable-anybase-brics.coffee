@@ -56,7 +56,7 @@ BRICS =
     #-------------------------------------------------------------------------------------------------------
     ### TAINT fall back to `Number::toString()` where possible (but not for base 10 as it uses exponential notation) ###
     encode = ( n, alphabet ) ->
-      throw new RangeError "Ωanyb___2 Only nonnegative integers supported" if n < 0
+      throw new RangeError "Ωanyb___1 Only nonnegative integers supported" if n < 0
       return alphabet[0] if n is 0
       base  = alphabet.length
       R     = ''
@@ -97,6 +97,23 @@ BRICS =
         `max_n` (e.g. `Number.MAX_SAFE_INTEGER`) ###
     get_max_integer = ( max_n, base ) -> ( base ** get_max_niners max_n, base ) - 1
 
+    #-------------------------------------------------------------------------------------------------------
+    ### Returns whether `∃p ∈ ℕ: ( base ** p ) == n`. ###
+    is_positive_integer_power_of = ( n, base ) ->
+      throw new Error "Ωanyb___3 expected a (safe) integer, got #{n}"             unless Number.isSafeInteger n
+      throw new Error "Ωanyb___4 expected a (safe) integer, got #{base}"          unless Number.isSafeInteger base
+      throw new Error "Ωanyb___5 expected a positive integer, got #{n}"           unless n > 1
+      throw new Error "Ωanyb___6 expected an integer greater than 1, got #{base}" unless base > 1
+      return false unless n > 1
+      n /= base while n % base == 0
+      return n is 1
+
+    #-------------------------------------------------------------------------------------------------------
+    ### Returns whether a given positive integer `n` would only consist of niners when written in a given
+        `base`, which is the case if `n + 1` is a power of the base. ###
+    is_positive_all_niner = ( n, base ) -> is_positive_integer_power_of n + 1, base
+
+
     #.......................................................................................................
     return exports = {
       encode,
@@ -106,7 +123,9 @@ BRICS =
       log_to_base,
       get_required_digits,
       get_max_niners,
-      get_max_integer, }
+      get_max_integer,
+      is_positive_integer_power_of,
+      is_positive_all_niner, }
 
 #===========================================================================================================
 Object.assign module.exports, BRICS
