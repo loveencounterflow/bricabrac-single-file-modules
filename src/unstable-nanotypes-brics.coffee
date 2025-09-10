@@ -108,43 +108,30 @@ BRICS =
         return undefined
 
       #-----------------------------------------------------------------------------------------------------
+      dm: ( data, mapping, fn ) ->
+        ### TAINT may want to use `normalize-function-arguments` ###
+        ### Wrapper method to capture data and optionally remap it ###
+        @data   = {}
+        R       = fn.call @
+        #...................................................................................................
+        if data?
+          if mapping?     then  clean_assign data, ( remap ( clean_assign {}, @data ), mapping )  ### d1 m1 ###
+          else                  clean_assign data,                            @data               ### d1 m0 ###
+        else if mapping?  then                       remap                    @data,   mapping    ### d0 m1 ###
+        return R                                                                                  ### d0 m0 ###
+
+      #-----------------------------------------------------------------------------------------------------
       isa: ( x, P... ) ->
         R = @_isa.call @, x, P...
         return R
 
       #-----------------------------------------------------------------------------------------------------
-      isa_datmap: ( [ x, P..., ], data = null, mapping = null ) ->
-        @data   = {}
-        R       = @isa x, P...
-        #...................................................................................................
-        if data?
-          if mapping?     then  clean_assign data, ( remap ( clean_assign {}, @data ), mapping )  ### d1 m1 ###
-          else                  clean_assign data,                            @data               ### d1 m0 ###
-        else if mapping?  then                       remap                    @data,   mapping    ### d0 m1 ###
-        return R                                                                                  ### d0 m0 ###
-
-      #-----------------------------------------------------------------------------------------------------
-      datmap_isa: ( data, mapping, x, P... ) ->
-        @data   = {}
-        R       = @isa x, P...
-        #...................................................................................................
-        if data?
-          if mapping?     then  clean_assign data, ( remap ( clean_assign {}, @data ), mapping )  ### d1 m1 ###
-          else                  clean_assign data,                            @data               ### d1 m0 ###
-        else if mapping?  then                       remap                    @data,   mapping    ### d0 m1 ###
-        return R                                                                                  ### d0 m0 ###
-
-      #-----------------------------------------------------------------------------------------------------
       validate: ( x, P... ) ->
         return x if @isa x, P...
         ### TAINT use better rpr() ###
-        throw new Error "Ωbbnt___2 not a valid #{@name}: #{x}"
-
-      #-----------------------------------------------------------------------------------------------------
-      validate_datmap: ( [ x, P..., ], data = null, mapping = null ) ->
-        return x if @isa_datmap [ x, P..., ], data, mapping
-        ### TAINT use better rpr() ###
-        throw new Error "Ωbbnt___3 not a valid #{@name}: #{x}"
+        message   = "not a valid #{@data.$name ? @name}: #{x}"
+        message  += " – #{@data.message}" if @data.message?
+        throw new Error message
 
       #-----------------------------------------------------------------------------------------------------
       assign: ( P... ) -> clean_assign @data, P...
