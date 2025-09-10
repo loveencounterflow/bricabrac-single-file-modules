@@ -88,6 +88,9 @@
 * **`[—]`** adapt `Get_random::float()`, `Get_random::integer()` to match `Get_random::chr()`,
   `Get_random::text()`
 * **`[—]`** ensure `Get_random::cfgon_stats` is called when given even when missing or `null` in method call
+* **`[—]`** need better `rpr()`
+  * **`[—]`** one `rpr()` for use in texts such as error messages, one `rpr()` ('`show()`'?) for use in
+    presentational contexts
 
 ### Benchmark
 
