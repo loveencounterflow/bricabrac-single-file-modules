@@ -12,7 +12,7 @@ BRICS =
 
   #=========================================================================================================
   ### NOTE Future Single-File Module ###
-  require_nanotypes: ->
+  require_nanotypes_v1: ->
 
     #=======================================================================================================
     SFMODULES                 = require './main'
@@ -117,11 +117,9 @@ BRICS =
         return "#{@name} <#{@inputs[ 0 ].full_name}>"
 
       #-----------------------------------------------------------------------------------------------------
-      dm: ( data, mapping, fn ) ->
-        ### TAINT may want to use `normalize-function-arguments` ###
-        ### Wrapper method to capture data and optionally remap it ###
-        @data   = {}
-        R       = fn.call @
+      dm_isa: ( data, mapping, x, P... ) ->
+        ### Like `Type::isa()`, but capture data and optionally remap it ###
+        R = @isa x, P...
         #...................................................................................................
         if data?
           if mapping?     then  clean_assign data, ( remap ( clean_assign {}, @data ), mapping )  ### d1 m1 ###
@@ -131,6 +129,7 @@ BRICS =
 
       #-----------------------------------------------------------------------------------------------------
       isa: ( x, P... ) ->
+        @data   = {}
         @inputs = { x, P..., }
         R       = @_isa.call @, x, P...
         return R
@@ -138,7 +137,6 @@ BRICS =
       #-----------------------------------------------------------------------------------------------------
       validate: ( x, P... ) ->
         return x if @isa x, P...
-        ### TAINT use better rpr() ###
         message   = "not a valid #{@full_name}: #{x}"
         message  += " – #{@data.message}" if @data.message?
         throw new Error message
@@ -170,5 +168,7 @@ BRICS =
     return exports = { Type, Typespace, CFG, }
 
 
+
 #===========================================================================================================
+BRICS.require_nanotypes = BRICS.require_nanotypes_v2
 Object.assign module.exports, BRICS
