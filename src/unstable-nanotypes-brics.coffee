@@ -134,12 +134,28 @@ BRICS =
         R       = @_isa.call @, x, P...
         return R
 
+      # #-----------------------------------------------------------------------------------------------------
+      # dm_validate: ( data, mapping, x, P... ) ->
+      #   return x if @isa x, P...
+      #   message   = "not a valid #{@full_name}: #{x}"
+      #   message  += " – #{@data.message}" if @data.message?
+      #   throw new Error message
+
+      #-----------------------------------------------------------------------------------------------------
+      _get_validation_failure_message: ( x ) ->
+        R   = "(#{@full_name}) not a valid #{@full_name}: #{x}"
+        R  += " – #{@data.message}" if @data.message?
+        return R
+
+      #-----------------------------------------------------------------------------------------------------
+      dm_validate: ( data, mapping,  x, P... ) ->
+        return x if @dm_isa data, mapping, x, P...
+        throw new Error @_get_validation_failure_message x
+
       #-----------------------------------------------------------------------------------------------------
       validate: ( x, P... ) ->
         return x if @isa x, P...
-        message   = "not a valid #{@full_name}: #{x}"
-        message  += " – #{@data.message}" if @data.message?
-        throw new Error message
+        throw new Error @_get_validation_failure_message x
 
       #-----------------------------------------------------------------------------------------------------
       assign: ( P... ) -> clean_assign @data, P...
