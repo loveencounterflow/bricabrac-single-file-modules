@@ -1,6 +1,9 @@
 
 'use strict'
 
+#===========================================================================================================
+{ debug, } = console
+
 
 ############################################################################################################
 #
@@ -100,12 +103,18 @@ BRICS =
 
       #-----------------------------------------------------------------------------------------------------
       constructor: ( typespace, name, isa ) ->
-        hide @, 'name',     name
-        hide @, 'T',        typespace
-        hide @, '_isa',     isa
+        hide @, 'name',       name
+        hide @, 'T',          typespace
+        hide @, '_isa',       isa
+        hide @, 'inputs',     {}
         set_getter @, CFG,  => @T[CFG]
         @data             = {}
         return undefined
+
+      #-----------------------------------------------------------------------------------------------------
+      set_getter @::, 'full_name', ->
+        return @name unless @inputs[ 0 ] instanceof Type
+        return "#{@name} <#{@inputs[ 0 ].full_name}>"
 
       #-----------------------------------------------------------------------------------------------------
       dm: ( data, mapping, fn ) ->
@@ -122,14 +131,15 @@ BRICS =
 
       #-----------------------------------------------------------------------------------------------------
       isa: ( x, P... ) ->
-        R = @_isa.call @, x, P...
+        @inputs = { x, P..., }
+        R       = @_isa.call @, x, P...
         return R
 
       #-----------------------------------------------------------------------------------------------------
       validate: ( x, P... ) ->
         return x if @isa x, P...
         ### TAINT use better rpr() ###
-        message   = "not a valid #{@data.$name ? @name}: #{x}"
+        message   = "not a valid #{@full_name}: #{x}"
         message  += " – #{@data.message}" if @data.message?
         throw new Error message
 
