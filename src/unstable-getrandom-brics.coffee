@@ -1,5 +1,9 @@
 'use strict'
 
+#===========================================================================================================
+{ debug, } = console
+
+
 ############################################################################################################
 #
 #===========================================================================================================
@@ -438,6 +442,67 @@ UNSTABLE_GETRANDOM_BRICS =
             sentinel = null
             break
         return ( stats.finish sentinel )
+
+      #=======================================================================================================
+      # SHUFFLE
+      #-------------------------------------------------------------------------------------------------------
+      # shuffle: ( list, ratio = 1 ) ->
+      #   ### Shuffles the elements of a list randomly. After the call, the elements of will be—most of the
+      #   time—reordered (but this is not guaranteed, as there is a realistic probability for recurrence
+      #   of orderings with short lists).
+
+      #   This is an implementation of the renowned Fisher-Yates algorithm, but with a twist: You may pass in
+      #   a `ratio` as second argument (which should be a float in the range `0 <= ratio <= 1`); if set to a
+      #   value less than one, a random number will be used to decide whether or not to perform a given step
+      #   in the shuffling process, so lists shuffled with zero-ish ratios will show less disorder than lists
+      #   shuffled with a one-ish ratio.
+
+      #   Implementation gleaned from http://stackoverflow.com/a/962890/256361. ###
+      #   #.........................................................................................................
+      #   return list if ( this_idx = list.length ) < 2
+      #   return @_shuffle list, ratio #, Math.random, @random_integer.bind @
+
+      # # #-----------------------------------------------------------------------------------------------------------
+      # # get_shuffle: ( seed_0 = 0, seed_1 = 1 ) ->
+      # #   ### This method works similar to `get_rnd`; it accepts two `seed`s which are used to produce random number
+      # #   generators and returns a predictable shuffling function that accepts arguments like Bits'N'Pieces
+      # #   `shuffle`. ###
+      # #   rnd             = @get_rnd      seed_0
+      # #   random_integer  = @get_rnd_int  seed_1
+      # #   return ( list, ratio = 1 ) => @_shuffle list, ratio, rnd, random_integer
+
+      # #-----------------------------------------------------------------------------------------------------------
+      # _shuffle: ( list, ratio, rnd = null, random_integer = null ) ->
+      #   #.........................................................................................................
+      #   return list if ( this_idx = list.length ) < 2
+      #   #.........................................................................................................
+      #   rnd             = => @float()
+      #   random_integer  = ( min, max ) => @integer min, max
+      #   #.........................................................................................................
+      #   loop
+      #     this_idx += -1
+      #     return list if this_idx < 1
+      #     if ratio >= 1 or rnd() <= ratio
+      #       # return list if this_idx < 1
+      #       that_idx = random_integer 0, this_idx
+      #       [ list[ that_idx ], list[ this_idx ] ] = [ list[ this_idx ], list[ that_idx ] ]
+      #   #.........................................................................................................
+      #   return list
+
+      #-----------------------------------------------------------------------------------------------------
+      shuffle: ( list, factor = 1 ) ->
+        #...................................................................................................
+        return list if ( this_idx = list.length ) < 2
+        #...................................................................................................
+        get_random_idx  = @integer_producer { min: 0, max: list.length - 1, }
+        max_count       = Math.ceil list.length * factor
+        #...................................................................................................
+        for count in [ 1 .. max_count ]
+          this_idx = get_random_idx()
+          that_idx = get_random_idx()
+          [ list[ that_idx ], list[ this_idx ], ] = [ list[ this_idx ], list[ that_idx ], ]
+        #...................................................................................................
+        return list
 
 
     #=========================================================================================================
