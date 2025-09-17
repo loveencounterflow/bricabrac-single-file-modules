@@ -97,6 +97,36 @@
 * **`[—]`** implement ?`min_count` / ?`max_count` / ?`min_dt` / ?`max_dt`, `prioritize: ( 'dt' | 'count' )`
   * probably best to stick with `min` or `max` for both `count` and `dt`
 
+* **`[—]`** allow to call as `timeit name, -> ...` and / or `timeit { name, ..., }, -> ...` so function name
+  can be overriden
+
+* **`[—]`** implement 'tracks' / 'splits' such that within a `timeit()` run, the executed function can call
+  sub-timers with `track track_name, -> ...`. Different contestants can re-use track names that can then be
+  compared, ex.:
+
+  ```coffee
+  timeit contestant_a = ( { track, progress, } ) ->
+    data = null
+    track load_data         = -> data = a.load_data()
+    a.do_other_stuff()
+    track evaluate          = -> data = a.evaluate()
+    track only_a_does_this  = -> data = a.only_a_does_this()
+    track save_data         = -> data = a.save_data()
+  timeit contestant_b = ( { track, progress, } ) ->
+    data = null
+    track load_data         = -> data = b.load_data()
+    b.do_other_stuff()
+    track evaluate          = -> data = b.evaluate()
+    track save_data         = -> data = b.save_data()
+  ```
+  will show elapsed total times for `contestant_a`, `contestant_b`, as well as comparisons of tracks
+  `contestant_a/load_data` v. `contestant_b/load_data`, `contestant_a/evaluate` v. `contestant_b/evaluate`
+  and so on; track `contestant_a/only_a_does_this` is shown without comparison. There will inevitable also
+  be an 'anonymous track', i.e. time spent by each contestant outside of any named track (here symbolized by
+  `_.do_other_stuff()`, but in principle also comprising any part of the function between tracks, and time
+  spent to set up and finish each track); these extra times should also be shown, at least when exceeding a
+  given threshold. In `timeit()` runs that have no `track()` calls, the anonymous track is all there is.
+
 ### Errors
 
 * **`[—]`** custom error base class

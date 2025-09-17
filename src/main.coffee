@@ -16,5 +16,6 @@ Object.assign module.exports, { unstable: {
   ( require './unstable-anybase-brics'          )...,
   ( require './unstable-object-tools-brics'     )...,
   ( require './unstable-nanotypes-brics'        )...,
+  ( require './unstable-capture-output'         )...,
   }, }
 
